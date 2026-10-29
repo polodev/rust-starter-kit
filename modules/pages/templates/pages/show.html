@@ -6,6 +6,15 @@
   {% if page.feature_image %}<meta property="og:image" content="{{ page.feature_image.absolute_url }}">
   <meta name="twitter:card" content="summary_large_image">{% endif %}{% endblock meta %}
 {% block content %}
+{% if user and "pages.view" in user.permissions %}
+<div class="mb-3 flex items-center justify-between gap-3 rounded-lg border border-dashed border-brand-navy/40 bg-white px-3 py-2 text-sm dark:border-brand-amber/50 dark:bg-gray-900" data-testid="admin-bar">
+  <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"><i class="fa-solid fa-user-shield mr-1"></i>{{ t(key="admin-bar-label", lang=tag) }}</span>
+  <a href="/admin/pages/{{ page.id }}/edit" data-testid="edit-page-link" class="inline-flex items-center gap-1.5 rounded-md bg-brand-navy px-3 py-1 font-medium text-white hover:opacity-90">
+    <i class="fa-regular fa-pen-to-square"></i>
+    {% if "pages.manage" in user.permissions %}{{ t(key="admin-edit-page", lang=tag) }}{% else %}{{ t(key="admin-view-page", lang=tag) }}{% endif %}
+  </a>
+</div>
+{% endif %}
 <article class="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-gray-700 dark:bg-gray-900">
   {% if page.feature_image %}
   <img src="{{ page.feature_image.url }}" alt="{{ page.feature_image.alt }}" data-testid="feature-image" class="max-h-80 w-full object-cover">

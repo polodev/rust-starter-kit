@@ -20,6 +20,8 @@ pub struct SiteUser {
     pub role_name: Option<String>,
     /// Holds `dashboard.view`, so the menu shows the admin dashboard link.
     pub can_view_admin: bool,
+    /// The person's permission keys, for staff-only links on public pages (their own, never cached).
+    pub permissions: Vec<String>,
 }
 
 #[derive(Debug, Clone)]

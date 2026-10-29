@@ -966,7 +966,32 @@ async fn admin_page_list_and_media_library_show_the_feature_image() {
             .add_header("cookie", dev.clone())
             .await
             .text();
-        assert!(library.contains(r#"data-testid="media-grid""#) && library.contains("1 files"));
+        assert!(library.contains(r#"data-testid="media-table""#) && library.contains("1 files"));
+        assert!(
+            library.contains(r#"class="media-popup"#)
+                && library.contains(r#"data-testid="media-thumb""#),
+            "thumbnails are lightbox links"
+        );
+        assert!(
+            library.contains("/static/vendor/magnific-popup/jquery.magnific-popup.min.js")
+                && library.contains("magnificPopup("),
+            "Magnific Popup is loaded and started"
+        );
+        assert!(
+            library.contains(r#"data-testid="media-entity""#),
+            "each row names its entity"
+        );
+        for asset in [
+            "/static/vendor/jquery/jquery.min.js",
+            "/static/vendor/magnific-popup/jquery.magnific-popup.min.js",
+            "/static/vendor/magnific-popup/magnific-popup.min.css",
+        ] {
+            assert_eq!(
+                server.get(asset).await.status_code(),
+                200,
+                "{asset} is served"
+            );
+        }
         assert!(
             library.contains("feature_image")
                 && library.contains("Page #")

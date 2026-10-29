@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/app.css">
+  {% block head %}{% endblock head %}
   <script defer src="/static/js/alpine.min.js"></script>
 </head>
 <body class="bg-brand-cloud font-latin text-gray-800 antialiased dark:bg-page-dark dark:text-gray-200"
@@ -160,5 +161,6 @@
       </div>
     </div>
   </div>
+  {% block scripts %}{% endblock scripts %}
 </body>
 </html>

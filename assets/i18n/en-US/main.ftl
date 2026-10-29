@@ -84,3 +84,6 @@ logo-missing = Choose an image first.
 theme-light = Light
 theme-dark = Dark
 theme-system = System
+admin-edit-page = Edit this page
+admin-view-page = View in admin
+admin-bar-label = Admin

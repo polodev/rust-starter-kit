@@ -128,11 +128,24 @@ impl HasMedia for pages::Model {
 
 ## The media library page
 
-`/admin/media` (needs `media.view`) is a **browser** for every file of every model, not a place to upload loose files. That matches Laravel, where a file always belongs to a model:
+`/admin/media` (needs `media.view`) is a **table of every file of every model**, not a place to upload loose files. That matches Laravel's media library, where a file always belongs to a model.
 
-- Search by name; filter by collection and type; 24 per page.
-- Each file shows its collection, size, date, public or private, and an **owner link** (for example "Page #3") that takes you to the screen where you manage it.
-- Other uses: the account logo (`/account/logo`) is a single-file private collection.
+| Column | What it shows |
+|---|---|
+| Preview | A thumbnail. **Click it** to open the image in a Magnific Popup lightbox; the images on the page form one gallery you can step through. PDFs open in a new tab. |
+| Name | The display name and stored file name |
+| Entity | The model that owns the file, for example **Page #3**. **Click it** to open that record's edit screen, where you change the file. |
+| Collection, Type, Size | `feature_image`, `image/png`, 35 KB |
+| Access | Public or private |
+| Added | Date |
+
+Search by name, filter by collection and type, 24 rows per page. jQuery and Magnific Popup are vendored in `assets/static/vendor/` and load only on this page.
+
+### Can a file exist without a model?
+
+No, and that is deliberate: every row has a `model_type` and `model_id`, the same as Spatie. To upload something that does not belong to any record yet (for example an image you want to paste into a page body), create a small owner for it, such as `Owner::new("library", 0)`. That is what the first version of this page did; one such file may still exist in your development database and shows as `library #0` with no link.
+
+To make a model show a link in the Entity column, add it to `owner_link()` in `modules/media/src/controllers/mod.rs`.
 
 ## Receiving uploads in your own handler
 

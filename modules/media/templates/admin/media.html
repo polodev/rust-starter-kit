@@ -1,9 +1,10 @@
 {% extends "layouts/admin.html" %}
+{% block head %}<link rel="stylesheet" href="/static/vendor/magnific-popup/magnific-popup.min.css">{% endblock head %}
 {% block content %}
 <div class="mx-auto max-w-7xl space-y-3">
   <div>
     <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ title }}</h1>
-    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Every file owned by any model. Add or replace a file where it belongs, for example a page's feature image; use the owner link to get there.</p>
+    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Every file owned by a model. Click a thumbnail to preview it, or the entity to open the record the file belongs to and change it there.</p>
   </div>
 
   <form method="get" action="/admin/media" class="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800" data-testid="media-filters">
@@ -21,22 +22,45 @@
     <span class="text-xs text-gray-500" data-testid="media-total">{{ total }} files</span>
   </form>
 
-  <div class="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6" data-testid="media-grid">
-    {% for item in items %}
-    <div class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-      <a href="{{ item.url }}" target="_blank" rel="noopener" class="flex h-32 items-center justify-center bg-gray-50 dark:bg-gray-900">
-        {% if item.is_image %}<img src="{{ item.url }}" alt="{{ item.name }}" loading="lazy" class="max-h-full max-w-full object-contain">{% else %}<i class="fa-regular fa-file-pdf text-4xl text-gray-400"></i>{% endif %}
-      </a>
-      <div class="space-y-1 p-2.5 text-xs">
-        <p class="truncate text-sm font-medium" title="{{ item.name }}">{{ item.name }}</p>
-        <p class="text-gray-500"><span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-700">{{ item.collection }}</span> {{ item.kb }} KB &middot; {{ item.added }}</p>
-        <p class="text-gray-500">{% if item.public %}Public{% else %}Private{% endif %} &middot;
-          {% if item.owner_url %}<a href="{{ item.owner_url }}" class="font-medium text-brand-navy underline dark:text-brand-amber">{{ item.owner_label }}</a>{% else %}{{ item.owner_label }}{% endif %}</p>
-      </div>
+  <div class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm" data-testid="media-table">
+        <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
+          <tr>
+            <th class="px-4 py-2">Preview</th><th class="px-4 py-2">Name</th><th class="px-4 py-2">Entity</th><th class="px-4 py-2">Collection</th>
+            <th class="px-4 py-2">Type</th><th class="px-4 py-2">Size</th><th class="px-4 py-2">Access</th><th class="px-4 py-2">Added</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+          {% for item in items %}
+          <tr data-media-row>
+            <td class="px-4 py-2">
+              {% if item.is_image %}
+              <a href="{{ item.url }}" class="media-popup block h-12 w-16 overflow-hidden rounded border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900" title="{{ item.name }}" data-testid="media-thumb">
+                <img src="{{ item.url }}" alt="{{ item.name }}" loading="lazy" class="h-full w-full object-cover">
+              </a>
+              {% else %}
+              <a href="{{ item.url }}" target="_blank" rel="noopener" class="flex h-12 w-16 items-center justify-center rounded border border-gray-200 bg-gray-50 text-2xl text-gray-400 hover:text-red-500 dark:border-gray-700 dark:bg-gray-900" title="Open {{ item.name }}" data-testid="media-thumb"><i class="fa-regular fa-file-pdf"></i></a>
+              {% endif %}
+            </td>
+            <td class="px-4 py-2"><p class="max-w-xs truncate font-medium" title="{{ item.name }}">{{ item.name }}</p><p class="max-w-xs truncate text-xs text-gray-500">{{ item.file_name }}</p></td>
+            <td class="px-4 py-2">
+              {% if item.owner_url %}<a href="{{ item.owner_url }}" data-testid="media-entity" class="font-medium text-brand-navy underline hover:text-orange-600 dark:text-brand-amber">{{ item.owner_label }}</a>
+              {% else %}<span class="text-gray-500" data-testid="media-entity">{{ item.owner_label }}</span>{% endif %}
+              <p class="text-xs text-gray-500">{{ item.owner_type }}</p>
+            </td>
+            <td class="px-4 py-2"><span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-700">{{ item.collection }}</span></td>
+            <td class="px-4 py-2 text-xs text-gray-500">{{ item.mime }}</td>
+            <td class="whitespace-nowrap px-4 py-2">{{ item.kb }} KB</td>
+            <td class="px-4 py-2">{% if item.public %}<span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Public</span>{% else %}<span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">Private</span>{% endif %}</td>
+            <td class="whitespace-nowrap px-4 py-2">{{ item.added }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">No files found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-    {% else %}
-    <p class="col-span-full rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-600">No files found.</p>
-    {% endfor %}
   </div>
 
   {% if pages > 1 %}
@@ -48,3 +72,20 @@
   {% endif %}
 </div>
 {% endblock content %}
+{% block scripts %}
+<script src="/static/vendor/jquery/jquery.min.js"></script>
+<script src="/static/vendor/magnific-popup/jquery.magnific-popup.min.js"></script>
+<script>
+  // Thumbnails open in a Magnific Popup lightbox; the images on this page form one gallery you can step through.
+  jQuery(function ($) {
+    $('[data-testid="media-table"]').magnificPopup({
+      delegate: 'a.media-popup',
+      type: 'image',
+      gallery: { enabled: true, navigateByImgClick: true, preload: [0, 1] },
+      image: { titleSrc: 'title' },
+      closeOnContentClick: false,
+      mainClass: 'mfp-fade'
+    });
+  });
+</script>
+{% endblock scripts %}

@@ -34,6 +34,7 @@ pub(crate) async fn forget_cache(ctx: &AppContext, slug: &str) {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct PageView {
+    id: i64,
     feature_image: Option<FeatureImage>,
     title: String,
     meta_description: String,
@@ -73,6 +74,7 @@ async fn find_page(ctx: &AppContext, slug: &str, locale: &str) -> Result<Option<
                     url: media.url(),
                 });
             return Ok(Some(PageView {
+                id: page.id,
                 feature_image,
                 title: translation.title,
                 meta_description: translation.meta_description,

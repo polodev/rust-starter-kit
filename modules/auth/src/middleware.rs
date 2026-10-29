@@ -39,6 +39,7 @@ pub async fn load_session(
                         avatar_url: None,
                         role_name: access.role.as_ref().map(|role| role.name.clone()),
                         can_view_admin: access.can(DASHBOARD_VIEW),
+                        permissions: access.permissions.iter().cloned().collect(),
                     });
                     request.extensions_mut().insert(AuthUser {
                         id: user.id,

@@ -50,7 +50,15 @@ async fn developer_logs_in_and_sees_the_admin_link_and_dashboard() {
 
         let admin = server.get("/admin").add_header("cookie", cookie).await;
         admin.assert_status_ok();
-        assert!(admin.text().contains("Newest users"));
+        let html = admin.text();
+        assert!(
+            html.contains("All navigation links"),
+            "the dashboard is the navigation hub"
+        );
+        assert!(
+            !html.contains("Newest users") && !html.contains(r#"data-testid="stats""#),
+            "no stat cards or user table"
+        );
     })
     .await;
 }
@@ -569,6 +577,99 @@ async fn dashboard_hub_lists_every_permitted_sidebar_link_with_counts() {
             );
         }
         assert!(html.contains("4 links"));
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn staff_see_a_direct_edit_link_on_the_public_page() {
+    use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+
+    request::<App, _, _>(|server, ctx| async move {
+        loco_modular::seed_all(&modules_registry::all(), &ctx)
+            .await
+            .unwrap();
+        user_with_role(&ctx, "market@example.com", Some("marketing")).await; // pages.manage
+        user_with_role(&ctx, "biz@example.com", Some("business_development")).await; // pages.view only
+        user_with_role(&ctx, "new@example.com", Some("new_employee")).await; // no pages permission
+        user_with_role(&ctx, "plain@example.com", None).await;
+        let id = module_pages::pages::Entity::find()
+            .filter(module_pages::pages::Column::Slug.eq("about"))
+            .one(&ctx.db)
+            .await
+            .unwrap()
+            .unwrap()
+            .id;
+        let edit_url = format!(r#"href="/admin/pages/{id}/edit""#);
+
+        // A guest first, so the page is cached before any staff member looks at it.
+        let guest = server.get("/pages/about").await.text();
+        assert!(!guest.contains(r#"data-testid="admin-bar""#));
+
+        let marketer = login(&server, "market@example.com", "password123").await;
+        let html = server
+            .get("/pages/about")
+            .add_header("cookie", marketer.clone())
+            .await
+            .text();
+        assert!(
+            html.contains(r#"data-testid="admin-bar""#)
+                && html.contains(r#"data-testid="edit-page-link""#)
+        );
+        assert!(
+            html.contains(&edit_url),
+            "the link goes straight to the edit page"
+        );
+        assert!(html.contains("Edit this page"));
+
+        let bangla = server
+            .get("/pages/about?lang=bn")
+            .add_header("cookie", marketer)
+            .await
+            .text();
+        assert!(bangla.contains("এই পৃষ্ঠা সম্পাদনা করুন") && bangla.contains(&edit_url));
+
+        // Only viewing is allowed: the link says so and still opens the page (read-only there).
+        let viewer = login(&server, "biz@example.com", "password123").await;
+        let html = server
+            .get("/pages/about")
+            .add_header("cookie", viewer.clone())
+            .await
+            .text();
+        assert!(
+            html.contains("View in admin")
+                && !html.contains("Edit this page")
+                && html.contains(&edit_url)
+        );
+        assert_eq!(
+            server
+                .get(&format!("/admin/pages/{id}/edit"))
+                .add_header("cookie", viewer)
+                .await
+                .status_code(),
+            200
+        );
+
+        // No pages permission, or no role at all: no link.
+        for email in ["new@example.com", "plain@example.com"] {
+            let cookie = login(&server, email, "password123").await;
+            let html = server
+                .get("/pages/about")
+                .add_header("cookie", cookie)
+                .await
+                .text();
+            assert!(
+                !html.contains(r#"data-testid="admin-bar""#) && !html.contains(&edit_url),
+                "{email} must not see the edit link"
+            );
+        }
+
+        // The link is not baked into the cached page: a guest still sees none afterwards.
+        let guest_again = server.get("/pages/about").await.text();
+        assert!(
+            !guest_again.contains(r#"data-testid="admin-bar""#) && !guest_again.contains(&edit_url)
+        );
     })
     .await;
 }

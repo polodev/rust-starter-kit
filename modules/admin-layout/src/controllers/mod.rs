@@ -5,7 +5,7 @@ use axum::{
     Form,
 };
 use loco_rs::prelude::*;
-use module_auth::{same_origin, sessions, users};
+use module_auth::{same_origin, users};
 use module_role_permission::{
     access_for, assign_role, permissions, revoke_role, role_user, roles, sync,
 };
@@ -17,41 +17,15 @@ use std::collections::HashMap;
 use crate::page::AdminPage;
 
 #[debug_handler]
-async fn dashboard(
-    ViewEngine(v): ViewEngine<TeraView>,
-    State(ctx): State<AppContext>,
-    page: AdminPage,
-) -> Result<Response> {
+async fn dashboard(ViewEngine(v): ViewEngine<TeraView>, page: AdminPage) -> Result<Response> {
     if !page.can("dashboard.view") {
         return page.forbidden(&v);
     }
-    let now = chrono::Utc::now().fixed_offset();
-    let stats = json!([
-        { "label": "Users", "value": users::Entity::find().count(&ctx.db).await? },
-        { "label": "Staff with a role", "value": role_user::Entity::find().count(&ctx.db).await? },
-        { "label": "Active roles", "value": roles::Entity::find().filter(roles::Column::IsActive.eq(true)).count(&ctx.db).await? },
-        { "label": "Permissions", "value": permissions::Entity::find().filter(permissions::Column::IsActive.eq(true)).count(&ctx.db).await? },
-        { "label": "Active sessions", "value": sessions::Entity::find().filter(sessions::Column::ExpiresAt.gt(now)).count(&ctx.db).await? },
-    ]);
-
-    let latest = users::Entity::find()
-        .order_by_desc(users::Column::Id)
-        .limit(5)
-        .all(&ctx.db)
-        .await?;
-    let role_names = role_names_for(&ctx, latest.iter().map(|user| user.id)).await?;
-    let recent: Vec<_> = latest
-        .iter()
-        .map(|user| json!({
-            "id": user.id, "name": user.name, "email": user.email,
-            "role": role_names.get(&user.id), "joined": user.created_at.format("%Y-%m-%d").to_string(),
-        }))
-        .collect();
     let link_count: usize = page.nav.iter().map(|section| section.links.len()).sum();
     page.render(
         &v,
         "admin/dashboard.html",
-        json!({ "title": "Dashboard", "stats": stats, "recent": recent, "link_count": link_count }),
+        json!({ "title": "Dashboard", "link_count": link_count }),
     )
 }
 

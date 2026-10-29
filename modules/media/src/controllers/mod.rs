@@ -202,7 +202,7 @@ async fn library(
         .map(|item| {
             let owner = owner_link(&item.model_type, item.model_id);
             json!({
-                "name": item.name, "url": item.url(), "mime": item.mime_type, "kb": (item.size + 1023) / 1024,
+                "name": item.name, "file_name": item.file_name, "owner_type": item.model_type, "url": item.url(), "mime": item.mime_type, "kb": (item.size + 1023) / 1024,
                 "is_image": item.mime_type.starts_with("image/"), "collection": item.collection_name,
                 "public": item.is_public, "added": item.created_at.format("%Y-%m-%d").to_string(),
                 "owner_label": owner.as_ref().map_or_else(|| format!("{} #{}", item.model_type, item.model_id), |(label, _)| label.clone()),
