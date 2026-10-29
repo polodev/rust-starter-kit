@@ -105,10 +105,44 @@ Form: `<form method="post" enctype="multipart/form-data"><input type="file" name
 - Rows are in the `media_files` table (`model_type`, `model_id`, `collection_name`, `name`, `file_name`, `mime_type`, `size`, `custom_properties`, `order_column`, `is_public`).
 - `GET /media/{uuid}/{file}` serves them. **Public** collections (`.public()`) go to everyone. **Private** ones (the default) go only to the owner and staff with `media.view`; everyone else gets a 404. Responses carry `nosniff` and a restrictive CSP.
 
-## Ready-made uses
+## A worked example: the page feature image
 
-- **Account logo:** `/account/logo`, a single-file private collection, also shown in the header avatar.
-- **Admin library:** `/admin/media` (needs `media.view` to look, `media.manage` to upload and delete). Files are public and show a copyable address.
+Pages use the library exactly like any model would (`modules/pages/src/lib.rs`):
+
+```rust
+pub const fn feature_image_collection() -> CollectionDef {
+    CollectionDef::single("feature_image").accepts_mime_types(IMAGES).max_bytes(DEFAULT_MAX_BYTES).public()
+}
+
+impl HasMedia for pages::Model {
+    fn media_type(&self) -> String { "page".into() }
+    fn media_id(&self) -> i64 { self.id }
+    fn media_collections(&self) -> Vec<CollectionDef> { vec![feature_image_collection()] }
+}
+```
+
+- **Edit it:** `/admin/pages/{id}/edit` (needs `pages.view` to look, `pages.manage` to change). Upload an image with alternative text, replace it, or remove it.
+- **Public page:** `/pages/about` shows the image above the title, with the alt text, and adds `og:image` for sharing.
+- **Cache:** the public page is cached for five minutes; uploading, removing, hiding or publishing clears it at once (`forget_cache`).
+- **Hide a page:** the same screen can hide or publish a page.
+
+## The media library page
+
+`/admin/media` (needs `media.view`) is a **browser** for every file of every model, not a place to upload loose files. That matches Laravel, where a file always belongs to a model:
+
+- Search by name; filter by collection and type; 24 per page.
+- Each file shows its collection, size, date, public or private, and an **owner link** (for example "Page #3") that takes you to the screen where you manage it.
+- Other uses: the account logo (`/account/logo`) is a single-file private collection.
+
+## Receiving uploads in your own handler
+
+```rust
+let form = module_media::read_form(multipart, "image").await;   // file + the other text fields
+let alt = form.fields.get("alt").cloned().unwrap_or_default();
+let file = form.into_file()?;                                    // Err(Empty) or Err(TooLarge) explains why
+```
+
+Loco limits a request body to 2 MB. A bigger upload breaks the stream, and `into_file` reports that as `TooLarge` so the visitor sees "too large", not "nothing chosen".
 
 <!-- foot:start -->
 ---

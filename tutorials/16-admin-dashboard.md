@@ -35,12 +35,14 @@ Style follows eng4 (sidebar sections, quick search) with Dokani's navy top bar. 
 | `/admin/users` | `users.view` | All users with their role; developers can change roles |
 | `/admin/roles` | `roles.view` | Roles and the permission matrix; developers can sync |
 | `/admin/schedule` | `queue.view` | Scheduled jobs from modules and config |
-| `/admin/media` | `media.view` | The media library (see tutorial 17) |
+| `/admin/pages` | `pages.view` | Pages with their feature image; `/admin/pages/{id}/edit` to change it (`pages.manage`) |
+| `/admin/media` | `media.view` | Browse every file of every model (see tutorial 17) |
 
 A guest is sent to the login page and returned after signing in. A signed-in person without the permission sees an "Access denied" page inside the admin shell.
 
 ## Finding things easily
 
+- **The dashboard itself is a navigation hub** (like eng4). `/admin` opens on "All navigation links": a count of sections and links, a search box and every sidebar link as a small icon chip, grouped by section. It is built from the same menu as the sidebar, so it can never drift, and it only lists what you may use.
 - The sidebar has sections (**Overview**, **Content**, **People and access**, **System**) and only shows links the person may use.
 - The current page is highlighted.
 - **Ctrl/Cmd + K** (or the "Find a page" button) opens a search over every sidebar item. Type, press Enter to open the first match.

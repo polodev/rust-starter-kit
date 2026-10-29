@@ -101,8 +101,9 @@ database:
 auth:
   # JWT authentication
   jwt:
-    # Secret key for token generation and verification
-    secret: <%= get_env(name="JWT_SECRET", default="dev-only-jwt-secret-not-for-production") %>
+    # Secret key for token generation and verification. Must be base64 text (letters, digits, + / =);
+    # the default is a fake, for local use only. Production requires a real JWT_SECRET.
+    secret: <%= get_env(name="JWT_SECRET", default="ZGV2LW9ubHktand0LXNlY3JldC1ub3QtZm9yLXByb2R1Y3Rpb24=") %>
     # Token expiration time in seconds
     expiration: 604800 # 7 days
     # Where to read the token from. Omitted => `Authorization: Bearer <token>`.

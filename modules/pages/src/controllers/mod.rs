@@ -2,17 +2,39 @@ use std::time::Duration;
 
 use loco_modular::remember;
 use loco_rs::prelude::*;
-use module_site_layout::{Site, DEFAULT_LOCALE};
+use module_media::InteractsWithMedia;
+use module_site_layout::{Site, DEFAULT_LOCALE, SUPPORTED_LOCALES};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 
-use crate::entities::{page_translations, pages};
+use crate::{
+    entities::{page_translations, pages},
+    FEATURE_IMAGE,
+};
+
+mod admin;
 
 /// How long a rendered page row stays in the short-lived cache.
 const PAGE_CACHE_TTL: Duration = Duration::from_secs(300);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+struct FeatureImage {
+    url: String,
+    /// Full address for social-sharing tags.
+    absolute_url: String,
+    alt: String,
+}
+
+/// Forget the cached public versions of a page after it changes.
+pub(crate) async fn forget_cache(ctx: &AppContext, slug: &str) {
+    for code in SUPPORTED_LOCALES {
+        let _ = ctx.cache.remove(&format!("pages:{slug}:{code}")).await;
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct PageView {
+    feature_image: Option<FeatureImage>,
     title: String,
     meta_description: String,
     body_html: String,
@@ -21,7 +43,8 @@ struct PageView {
 }
 
 /// Finds the published page in the requested language, falling back to the default language.
-async fn find_page(db: &DatabaseConnection, slug: &str, locale: &str) -> Result<Option<PageView>> {
+async fn find_page(ctx: &AppContext, slug: &str, locale: &str) -> Result<Option<PageView>> {
+    let db = &ctx.db;
     let Some(page) = pages::Entity::find()
         .filter(pages::Column::Slug.eq(slug))
         .filter(pages::Column::IsPublished.eq(true))
@@ -38,7 +61,19 @@ async fn find_page(db: &DatabaseConnection, slug: &str, locale: &str) -> Result<
             .one(db)
             .await?
         {
+            let feature_image = page
+                .get_first_media(ctx, FEATURE_IMAGE)
+                .await?
+                .map(|media| FeatureImage {
+                    absolute_url: format!("{}{}", ctx.config.server.full_url(), media.url()),
+                    alt: media
+                        .custom_property("alt")
+                        .and_then(|alt| alt.as_str().map(str::to_owned))
+                        .unwrap_or_default(),
+                    url: media.url(),
+                });
             return Ok(Some(PageView {
+                feature_image,
                 title: translation.title,
                 meta_description: translation.meta_description,
                 body_html: translation.body_html,
@@ -60,7 +95,7 @@ async fn show(
 
     let cache_key = format!("pages:{slug}:{code}");
     let page = remember(&ctx, &cache_key, PAGE_CACHE_TTL, async {
-        find_page(&ctx.db, &slug, code).await
+        find_page(&ctx, &slug, code).await
     })
     .await?;
 
@@ -82,5 +117,7 @@ async fn show(
 }
 
 pub fn routes() -> Vec<Routes> {
-    vec![Routes::new().prefix("pages").add("/{slug}", get(show))]
+    let mut routes = vec![Routes::new().prefix("pages").add("/{slug}", get(show))];
+    routes.extend(admin::routes());
+    routes
 }

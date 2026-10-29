@@ -1,9 +1,18 @@
 {% extends "layouts/site.html" %}
 {% block title %}{{ page.title }} | {{ t(key="site-name", lang=tag) }}{% endblock title %}
-{% block meta %}<meta name="description" content="{{ page.meta_description }}">{% endblock meta %}
+{% block meta %}<meta name="description" content="{{ page.meta_description }}">
+  <meta property="og:title" content="{{ page.title }}">
+  <meta property="og:description" content="{{ page.meta_description }}">
+  {% if page.feature_image %}<meta property="og:image" content="{{ page.feature_image.absolute_url }}">
+  <meta name="twitter:card" content="summary_large_image">{% endif %}{% endblock meta %}
 {% block content %}
-<article class="rounded-xl border border-slate-200 bg-white dark:border-gray-700 dark:bg-gray-800 p-6 sm:p-10">
-  <h1 class="mb-6 text-3xl font-bold tracking-tight text-brand-navy dark:text-white">{{ page.title }}</h1>
-  <div class="page-body">{{ page.body_html | safe }}</div>
+<article class="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+  {% if page.feature_image %}
+  <img src="{{ page.feature_image.url }}" alt="{{ page.feature_image.alt }}" data-testid="feature-image" class="max-h-80 w-full object-cover">
+  {% endif %}
+  <div class="p-6 sm:p-10">
+    <h1 class="mb-6 text-3xl font-bold tracking-tight text-brand-navy dark:text-white">{{ page.title }}</h1>
+    <div class="page-body">{{ page.body_html | safe }}</div>
+  </div>
 </article>
 {% endblock content %}

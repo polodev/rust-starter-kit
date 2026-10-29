@@ -636,17 +636,365 @@ async fn logo_upload_rejects_bad_files() {
     .await;
 }
 
+// ---------- pages own a feature image through the media library ----------
+
+async fn page_id(ctx: &AppContext, slug: &str) -> i64 {
+    use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+    module_pages::pages::Entity::find()
+        .filter(module_pages::pages::Column::Slug.eq(slug))
+        .one(&ctx.db)
+        .await
+        .unwrap()
+        .unwrap()
+        .id
+}
+
+fn image_form(bytes: Vec<u8>, name: &str, alt: &str) -> MultipartForm {
+    MultipartForm::new()
+        .add_part(
+            "image",
+            Part::bytes(bytes).file_name(name).mime_type("image/png"),
+        )
+        .add_text("alt", alt)
+}
+
 #[tokio::test]
 #[serial]
-async fn admin_media_library_follows_media_permissions() {
+async fn a_page_feature_image_is_uploaded_in_the_admin_and_shown_on_the_public_page() {
     request::<App, _, _>(|server, ctx| async move {
         demo_user::run(&ctx.db).await.unwrap();
-        user(&ctx, "market@example.com", Some("marketing")).await; // media.view only
-        user(&ctx, "plain@example.com", None).await;
+        loco_modular::seed_all(&modules_registry::all(), &ctx)
+            .await
+            .unwrap();
+        let id = page_id(&ctx, "about").await;
         let dev = login(&server, DEMO_EMAIL, DEMO_PASSWORD).await;
-        let marketer = login(&server, "market@example.com", "password123").await;
-        let plain = login(&server, "plain@example.com", "password123").await;
 
+        // Warm the page cache first, so this also proves the cache is cleared on change.
+        let before = server.get("/pages/about").await.text();
+        assert!(!before.contains(r#"data-testid="feature-image""#));
+
+        let edit = server
+            .get(&format!("/admin/pages/{id}/edit"))
+            .add_header("cookie", dev.clone())
+            .await
+            .text();
+        assert!(
+            edit.contains(r#"data-testid="feature-image-none""#)
+                && edit.contains(r#"data-testid="feature-image-form""#)
+        );
+
+        let upload = post(&server, &format!("/admin/pages/{id}/feature-image"), &dev)
+            .multipart(image_form(
+                PNG.to_vec(),
+                "Hero Photo.png",
+                "A sunrise over the river",
+            ))
+            .await;
+        assert_eq!(upload.status_code(), 303);
+        assert_eq!(
+            upload.header("location"),
+            format!("/admin/pages/{id}/edit?saved=image")
+        );
+
+        let public = server.get("/pages/about").await.text();
+        assert!(
+            public.contains(r#"data-testid="feature-image""#),
+            "the public page shows the image right away"
+        );
+        assert!(public.contains(r#"alt="A sunrise over the river""#));
+        assert!(
+            public.contains(r#"<meta property="og:image" content="http"#)
+                && public.contains("/media/"),
+            "social sharing gets an absolute image address"
+        );
+        let url = public
+            .split(r#"data-testid="feature-image""#)
+            .next()
+            .unwrap()
+            .rsplit(r#"src=""#)
+            .next()
+            .unwrap()
+            .split('"')
+            .next()
+            .unwrap()
+            .to_string();
+        assert!(
+            url.starts_with("/media/") && url.ends_with("/Hero-Photo.png"),
+            "url was {url}"
+        );
+        let image = server.get(&url).await;
+        image.assert_status_ok();
+        assert_eq!(
+            image.header("content-type"),
+            "image/png",
+            "a feature image is public: no login needed"
+        );
+
+        // The other language shows it too.
+        assert!(server
+            .get("/pages/about?lang=bn")
+            .await
+            .text()
+            .contains(r#"data-testid="feature-image""#));
+
+        // Single-file collection: a second upload replaces the first.
+        post(&server, &format!("/admin/pages/{id}/feature-image"), &dev)
+            .multipart(image_form(JPEG.to_vec(), "second.jpg", ""))
+            .await;
+        assert_eq!(
+            server.get(&url).await.status_code(),
+            404,
+            "the old file is gone"
+        );
+        assert!(server
+            .get("/pages/about")
+            .await
+            .text()
+            .contains("/second.jpg"));
+
+        // Removing it clears the page again.
+        let removed = post(
+            &server,
+            &format!("/admin/pages/{id}/feature-image/remove"),
+            &dev,
+        )
+        .await;
+        assert_eq!(
+            removed.header("location"),
+            format!("/admin/pages/{id}/edit?saved=removed")
+        );
+        assert!(!server
+            .get("/pages/about")
+            .await
+            .text()
+            .contains(r#"data-testid="feature-image""#));
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn feature_image_uploads_are_validated_and_need_pages_manage() {
+    request::<App, _, _>(|server, ctx| async move {
+        loco_modular::seed_all(&modules_registry::all(), &ctx)
+            .await
+            .unwrap();
+        user(&ctx, "market@example.com", Some("marketing")).await; // pages.manage
+        user(&ctx, "biz@example.com", Some("business_development")).await; // pages.view only
+        user(&ctx, "plain@example.com", None).await;
+        let id = page_id(&ctx, "about").await;
+        let marketer = login(&server, "market@example.com", "password123").await;
+        let viewer = login(&server, "biz@example.com", "password123").await;
+        let plain = login(&server, "plain@example.com", "password123").await;
+        let path = format!("/admin/pages/{id}/feature-image");
+
+        // Bad uploads from someone who may manage.
+        let text = post(&server, &path, &marketer)
+            .multipart(image_form(b"not an image".to_vec(), "x.png", ""))
+            .await;
+        assert_eq!(
+            text.header("location"),
+            format!("/admin/pages/{id}/edit?error=type")
+        );
+        let pdf = post(&server, &path, &marketer)
+            .multipart(MultipartForm::new().add_part(
+                "image",
+                Part::bytes(b"%PDF-1.7".to_vec()).file_name("a.pdf"),
+            ))
+            .await;
+        assert_eq!(
+            pdf.header("location"),
+            format!("/admin/pages/{id}/edit?error=type")
+        );
+        let mut big = PNG.to_vec();
+        big.resize(2 * 1024 * 1024 + 1, 0);
+        let large = post(&server, &path, &marketer)
+            .multipart(image_form(big, "big.png", ""))
+            .await;
+        // Loco caps the whole request body at 2 MB, so the stream breaks; that is reported as too large.
+        assert_eq!(
+            large.header("location"),
+            format!("/admin/pages/{id}/edit?error=size")
+        );
+        let none = post(&server, &path, &marketer)
+            .multipart(MultipartForm::new().add_text("alt", "only text"))
+            .await;
+        assert_eq!(
+            none.header("location"),
+            format!("/admin/pages/{id}/edit?error=empty")
+        );
+
+        // Marketing can upload; the shown message follows the result.
+        assert_eq!(
+            post(&server, &path, &marketer)
+                .multipart(image_form(PNG.to_vec(), "ok.png", "ok"))
+                .await
+                .status_code(),
+            303
+        );
+
+        // A viewer sees the page but has no form and cannot post.
+        let view = server
+            .get(&format!("/admin/pages/{id}/edit"))
+            .add_header("cookie", viewer.clone())
+            .await;
+        view.assert_status_ok();
+        assert!(
+            !view.text().contains(r#"data-testid="feature-image-form""#)
+                && view
+                    .text()
+                    .contains(r#"data-testid="feature-image-preview""#)
+        );
+        assert_eq!(
+            post(&server, &path, &viewer)
+                .multipart(image_form(PNG.to_vec(), "no.png", ""))
+                .await
+                .status_code(),
+            403
+        );
+        assert_eq!(
+            post(&server, &format!("{path}/remove"), &viewer)
+                .await
+                .status_code(),
+            403
+        );
+
+        // Someone with no role cannot even see the page.
+        assert_eq!(
+            server
+                .get(&format!("/admin/pages/{id}/edit"))
+                .add_header("cookie", plain.clone())
+                .await
+                .status_code(),
+            403
+        );
+        assert_eq!(
+            server
+                .get("/admin/pages")
+                .add_header("cookie", plain)
+                .await
+                .status_code(),
+            403
+        );
+
+        // Forms from other sites are refused, and guests are sent to log in.
+        let foreign = server
+            .post(&path)
+            .add_header("host", "localhost")
+            .add_header("origin", "https://evil.example")
+            .add_header("cookie", marketer)
+            .multipart(image_form(PNG.to_vec(), "x.png", ""))
+            .await;
+        assert_eq!(foreign.status_code(), 403);
+        assert_eq!(
+            server
+                .get(&format!("/admin/pages/{id}/edit"))
+                .await
+                .status_code(),
+            303
+        );
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn a_page_can_be_hidden_and_published_again() {
+    request::<App, _, _>(|server, ctx| async move {
+        demo_user::run(&ctx.db).await.unwrap();
+        loco_modular::seed_all(&modules_registry::all(), &ctx)
+            .await
+            .unwrap();
+        let id = page_id(&ctx, "privacy-policy").await;
+        let dev = login(&server, DEMO_EMAIL, DEMO_PASSWORD).await;
+
+        assert_eq!(server.get("/pages/privacy-policy").await.status_code(), 200);
+        let hide = post(&server, &format!("/admin/pages/{id}/published"), &dev)
+            .form(&[("published", "0")])
+            .await;
+        assert_eq!(
+            hide.header("location"),
+            format!("/admin/pages/{id}/edit?saved=unpublished")
+        );
+        assert_eq!(
+            server.get("/pages/privacy-policy").await.status_code(),
+            404,
+            "hidden pages disappear at once, cache included"
+        );
+
+        post(&server, &format!("/admin/pages/{id}/published"), &dev)
+            .form(&[("published", "1")])
+            .await;
+        assert_eq!(server.get("/pages/privacy-policy").await.status_code(), 200);
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn admin_page_list_and_media_library_show_the_feature_image() {
+    request::<App, _, _>(|server, ctx| async move {
+        demo_user::run(&ctx.db).await.unwrap();
+        loco_modular::seed_all(&modules_registry::all(), &ctx)
+            .await
+            .unwrap();
+        user(&ctx, "plain@example.com", None).await;
+        let id = page_id(&ctx, "terms-of-service").await;
+        let dev = login(&server, DEMO_EMAIL, DEMO_PASSWORD).await;
+        post(&server, &format!("/admin/pages/{id}/feature-image"), &dev)
+            .multipart(image_form(PNG.to_vec(), "Terms Banner.png", "Banner"))
+            .await;
+
+        let list = server
+            .get("/admin/pages")
+            .add_header("cookie", dev.clone())
+            .await
+            .text();
+        assert!(
+            list.contains("Terms of Service")
+                && list.contains("About us")
+                && list.contains("Privacy Policy")
+        );
+        assert!(
+            list.contains(&format!(r#"href="/admin/pages/{id}/edit""#))
+                && list.contains("/Terms-Banner.png"),
+            "the list shows each page's image"
+        );
+
+        let library = server
+            .get("/admin/media")
+            .add_header("cookie", dev.clone())
+            .await
+            .text();
+        assert!(library.contains(r#"data-testid="media-grid""#) && library.contains("1 files"));
+        assert!(
+            library.contains("feature_image")
+                && library.contains("Page #")
+                && library.contains(&format!(r#"href="/admin/pages/{id}/edit""#)),
+            "the library links to the owner"
+        );
+
+        // Filters.
+        let found = server
+            .get("/admin/media?q=terms&kind=image&collection=feature_image")
+            .add_header("cookie", dev.clone())
+            .await
+            .text();
+        assert!(found.contains("1 files"));
+        let missing = server
+            .get("/admin/media?q=nothing-matches")
+            .add_header("cookie", dev.clone())
+            .await
+            .text();
+        assert!(missing.contains("0 files") && missing.contains("No files found."));
+        let pdfs = server
+            .get("/admin/media?kind=pdf")
+            .add_header("cookie", dev)
+            .await
+            .text();
+        assert!(pdfs.contains("0 files"));
+
+        let plain = login(&server, "plain@example.com", "password123").await;
         assert_eq!(
             server
                 .get("/admin/media")
@@ -655,70 +1003,7 @@ async fn admin_media_library_follows_media_permissions() {
                 .status_code(),
             403
         );
-
-        let viewer = server
-            .get("/admin/media")
-            .add_header("cookie", marketer.clone())
-            .await;
-        viewer.assert_status_ok();
-        assert!(
-            !viewer.text().contains(r#"data-testid="media-upload""#),
-            "view-only staff see no upload form"
-        );
-        let denied = post(&server, "/admin/media/upload", &marketer)
-            .multipart(
-                MultipartForm::new().add_part("file", Part::bytes(PNG.to_vec()).file_name("a.png")),
-            )
-            .await;
-        assert_eq!(denied.status_code(), 403);
-
-        let upload = post(&server, "/admin/media/upload", &dev)
-            .multipart(MultipartForm::new().add_part(
-                "file",
-                Part::bytes(PNG.to_vec()).file_name("Hero Banner.png"),
-            ))
-            .await;
-        assert_eq!(upload.header("location"), "/admin/media?saved=1");
-        let library = server
-            .get("/admin/media?saved=1")
-            .add_header("cookie", dev.clone())
-            .await
-            .text();
-        assert!(library.contains("Hero Banner") && library.contains("File uploaded."));
-        let url = library
-            .split(r#"value=""#)
-            .find(|part| part.starts_with("/media/"))
-            .unwrap()
-            .split('"')
-            .next()
-            .unwrap()
-            .to_string();
-
-        assert_eq!(
-            server.get(&url).await.status_code(),
-            200,
-            "library files are public"
-        );
-
-        let bad = post(&server, "/admin/media/upload", &dev)
-            .multipart(MultipartForm::new().add_part(
-                "file",
-                Part::bytes(b"MZ-binary".to_vec()).file_name("virus.png"),
-            ))
-            .await;
-        assert_eq!(bad.header("location"), "/admin/media?error=type");
-
-        let id = library
-            .split("/admin/media/")
-            .nth(2)
-            .unwrap()
-            .split('/')
-            .next()
-            .unwrap()
-            .to_string();
-        let deleted = post(&server, &format!("/admin/media/{id}/delete"), &dev).await;
-        assert_eq!(deleted.status_code(), 303);
-        assert_eq!(server.get(&url).await.status_code(), 404);
+        assert_eq!(server.get("/admin/media").await.status_code(), 303);
     })
     .await;
 }

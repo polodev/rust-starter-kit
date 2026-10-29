@@ -115,6 +115,7 @@ auth:
   jwt:
     # Secret key for token generation and verification. Required: a secret
     # committed to the repository is a secret your users can forge tokens with.
+    # Must be base64 text, e.g. `openssl rand -base64 48`.
     secret: <%= get_env(name="JWT_SECRET") %>
     # Token expiration time in seconds
     expiration: 604800 # 7 days

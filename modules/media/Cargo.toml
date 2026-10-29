@@ -18,5 +18,5 @@ tracing = { workspace = true }
 bytes = { workspace = true }
 uuid = { workspace = true }
 module-auth = { path = "../auth" }
-module-admin-layout = { path = "../admin-layout" }
 module-role-permission = { path = "../role-permission" }
+module-admin-layout = { path = "../admin-layout" }

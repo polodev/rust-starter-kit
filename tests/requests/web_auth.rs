@@ -503,32 +503,72 @@ async fn dashboard_hub_lists_every_permitted_sidebar_link_with_counts() {
 
         // Developer: every area.
         let cookie = login(&server, DEMO_EMAIL, DEMO_PASSWORD).await;
-        let html = server.get("/admin").add_header("cookie", cookie).await.text();
+        let html = server
+            .get("/admin")
+            .add_header("cookie", cookie)
+            .await
+            .text();
         assert!(html.contains(r#"data-testid="nav-hub""#) && html.contains("All navigation links"));
-        assert!(html.contains("4 sections") && html.contains("5 links"), "overview, content, people and access, system");
-        for label in ["Dashboard", "Media library", "Users", "Roles and permissions", "Scheduled jobs"] {
-            assert!(html.contains(&format!(r#"data-nav-link data-label="{label}""#)), "hub is missing {label}");
+        assert!(
+            html.contains("4 sections") && html.contains("6 links"),
+            "overview, content, people and access, system"
+        );
+        for label in [
+            "Dashboard",
+            "Pages",
+            "Media library",
+            "Users",
+            "Roles and permissions",
+            "Scheduled jobs",
+        ] {
+            assert!(
+                html.contains(&format!(r#"data-nav-link data-label="{label}""#)),
+                "hub is missing {label}"
+            );
         }
-        assert!(html.contains(r#"data-testid="nav-search""#), "the hub has its search box");
-        assert!(html.contains(r#"href="/admin/media""#) && html.contains("fa-regular fa-images"), "links carry their icon");
+        assert!(
+            html.contains(r#"data-testid="nav-search""#),
+            "the hub has its search box"
+        );
+        assert!(
+            html.contains(r#"href="/admin/media""#) && html.contains("fa-regular fa-images"),
+            "links carry their icon"
+        );
 
         // New employee: only the dashboard.
         let cookie = login(&server, "new@example.com", "password123").await;
-        let html = server.get("/admin").add_header("cookie", cookie).await.text();
+        let html = server
+            .get("/admin")
+            .add_header("cookie", cookie)
+            .await
+            .text();
         assert!(html.contains("1 sections") && html.contains("1 links"));
         assert!(html.contains(r#"data-nav-link data-label="Dashboard""#));
-        assert!(!html.contains(r#"data-nav-link data-label="Users""#) && !html.contains(r#"data-nav-link data-label="Media library""#));
+        assert!(
+            !html.contains(r#"data-nav-link data-label="Users""#)
+                && !html.contains(r#"data-nav-link data-label="Media library""#)
+        );
 
-        // Marketing: dashboard, users, media library (media.view) but not roles or the schedule.
+        // Marketing: dashboard, pages, users, media library (media.view) but not roles or the schedule.
         let cookie = login(&server, "market@example.com", "password123").await;
-        let html = server.get("/admin").add_header("cookie", cookie).await.text();
-        for label in ["Dashboard", "Users", "Media library"] {
-            assert!(html.contains(&format!(r#"data-nav-link data-label="{label}""#)), "marketing should see {label}");
+        let html = server
+            .get("/admin")
+            .add_header("cookie", cookie)
+            .await
+            .text();
+        for label in ["Dashboard", "Pages", "Users", "Media library"] {
+            assert!(
+                html.contains(&format!(r#"data-nav-link data-label="{label}""#)),
+                "marketing should see {label}"
+            );
         }
         for label in ["Roles and permissions", "Scheduled jobs"] {
-            assert!(!html.contains(&format!(r#"data-nav-link data-label="{label}""#)), "marketing must not see {label}");
+            assert!(
+                !html.contains(&format!(r#"data-nav-link data-label="{label}""#)),
+                "marketing must not see {label}"
+            );
         }
-        assert!(html.contains("3 links"));
+        assert!(html.contains("4 links"));
     })
     .await;
 }

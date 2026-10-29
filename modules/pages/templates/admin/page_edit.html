@@ -1,0 +1,62 @@
+{% extends "layouts/admin.html" %}
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-4">
+  <div class="flex flex-wrap items-start justify-between gap-2">
+    <div>
+      <p class="text-sm"><a href="/admin/pages" class="text-brand-navy underline dark:text-brand-amber">&larr; Pages</a></p>
+      <h1 class="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">{{ page_title }}</h1>
+      <p class="text-sm text-gray-500">/pages/{{ item.slug }} &middot; {% for t in translations %}<span class="mr-1 rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-700">{{ t.locale }}</span>{% endfor %}</p>
+    </div>
+    <a href="/pages/{{ item.slug }}" target="_blank" rel="noopener" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">View page <i class="fa-solid fa-arrow-up-right-from-square ml-1 text-xs"></i></a>
+  </div>
+
+  {% if message %}
+  <p class="rounded-md px-3 py-2 text-sm {% if message.kind == "ok" %}bg-emerald-50 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200{% else %}bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-200{% endif %}" data-testid="page-message">{{ message.text }}</p>
+  {% endif %}
+
+  <section class="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800" data-testid="feature-image-card">
+    <h2 class="text-lg font-semibold">Feature image</h2>
+    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Shown at the top of the public page and used when the page is shared. One image: uploading a new one replaces the old.</p>
+
+    <div class="mt-4">
+      {% if image %}
+      <div class="flex flex-wrap items-start gap-4">
+        <img src="{{ image.url }}" alt="{{ image.alt }}" data-testid="feature-image-preview" class="max-h-48 rounded-lg border border-gray-200 object-cover dark:border-gray-700">
+        <div class="text-sm">
+          <p class="font-medium">{{ image.name }}</p>
+          <p class="text-gray-500">{{ image.kb }} KB</p>
+          <p class="mt-1 text-gray-600 dark:text-gray-300">Alt text: {% if image.alt %}{{ image.alt }}{% else %}<span class="text-gray-400">none</span>{% endif %}</p>
+          {% if can_manage %}
+          <form method="post" action="/admin/pages/{{ item.id }}/feature-image/remove" class="mt-2"><button type="submit" data-testid="feature-image-remove" class="text-sm font-medium text-red-600 hover:underline dark:text-red-400">Remove image</button></form>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <p class="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-600" data-testid="feature-image-none">No feature image yet.</p>
+      {% endif %}
+    </div>
+
+    {% if can_manage %}
+    <form method="post" action="/admin/pages/{{ item.id }}/feature-image" enctype="multipart/form-data" class="mt-5 space-y-3 border-t border-gray-100 pt-4 dark:border-gray-700" data-testid="feature-image-form">
+      <label class="block"><span class="mb-1 block text-sm font-medium">Choose an image</span>
+        <input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" required class="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-2 dark:file:bg-gray-700"></label>
+      <label class="block"><span class="mb-1 block text-sm font-medium">Alternative text <span class="font-normal text-gray-500">(describes the image for screen readers and search engines)</span></span>
+        <input type="text" name="alt" maxlength="160" value="{% if image %}{{ image.alt }}{% endif %}" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"></label>
+      <p class="text-xs text-gray-500">PNG, JPG, WebP or GIF, up to 2 MB.</p>
+      <button type="submit" class="rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:opacity-90">{% if image %}Replace image{% else %}Upload image{% endif %}</button>
+    </form>
+    {% endif %}
+  </section>
+
+  {% if can_manage %}
+  <section class="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="text-lg font-semibold">Visibility</h2>
+    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{% if item.published %}This page is visible to visitors.{% else %}This page is hidden; visitors see a not-found page.{% endif %}</p>
+    <form method="post" action="/admin/pages/{{ item.id }}/published" class="mt-3">
+      <input type="hidden" name="published" value="{% if item.published %}0{% else %}1{% endif %}">
+      <button type="submit" data-testid="toggle-published" class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">{% if item.published %}Hide page{% else %}Publish page{% endif %}</button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+{% endblock content %}

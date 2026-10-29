@@ -1,0 +1,32 @@
+{% extends "layouts/admin.html" %}
+{% block content %}
+<div class="mx-auto max-w-7xl space-y-3">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ title }}</h1>
+    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Public pages in English and Bangla. Open a page to set its feature image.</p>
+  </div>
+  <div class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm" data-testid="pages-table">
+        <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
+          <tr><th class="px-4 py-2">Image</th><th class="px-4 py-2">Page</th><th class="px-4 py-2">Languages</th><th class="px-4 py-2">Status</th><th class="px-4 py-2">Updated</th><th class="px-4 py-2"></th></tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+          {% for row in rows %}
+          <tr>
+            <td class="px-4 py-2">
+              {% if row.image %}<img src="{{ row.image }}" alt="" class="h-10 w-16 rounded object-cover">{% else %}<span class="flex h-10 w-16 items-center justify-center rounded bg-gray-100 text-gray-400 dark:bg-gray-700"><i class="fa-regular fa-image"></i></span>{% endif %}
+            </td>
+            <td class="px-4 py-2"><p class="font-medium">{{ row.title }}</p><p class="text-xs text-gray-500">/pages/{{ row.slug }}</p></td>
+            <td class="px-4 py-2">{% for code in row.languages %}<span class="mr-1 rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-700">{{ code }}</span>{% endfor %}</td>
+            <td class="px-4 py-2">{% if row.published %}<span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Published</span>{% else %}<span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">Hidden</span>{% endif %}</td>
+            <td class="px-4 py-2">{{ row.updated }}</td>
+            <td class="px-4 py-2 text-right"><a href="/admin/pages/{{ row.id }}/edit" class="font-medium text-brand-navy underline dark:text-brand-amber">{% if can_manage %}Edit{% else %}View{% endif %}</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock content %}

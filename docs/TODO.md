@@ -17,6 +17,7 @@ Update this file as work finishes.
 - [x] Public GitHub repo https://github.com/polodev/rust-starter-kit (secret scan clean, `.env` ignored)
 
 ## Queue (do in this order)
+0. [x] Media like Laravel: files belong to models. Pages have a feature image (single-file collection) edited in `/admin/pages/{id}/edit` and shown on the public page; `/admin/media` browses every file with owner links
 1. [x] Navbar responsive, exactly like Dokani (navy bar, EN switch, theme dropdown, amber avatar, hamburger)
 2. [x] `auth` module: login, register, logout, DB sessions, CSRF origin check, login lockout (15 tests)
 3. [x] App wired: module `apply` initializer, admin menu, storage disk, demo user is `developer`

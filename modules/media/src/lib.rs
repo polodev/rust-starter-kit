@@ -29,16 +29,12 @@ use loco_rs::{controller::Routes, task::Tasks};
 use sea_orm_migration::MigrationTrait;
 
 pub use collection::{CollectionDef, CollectionKind, DEFAULT_MAX_BYTES, DOCUMENTS, IMAGES};
-pub use controllers::read_upload;
+pub use controllers::{read_form, read_upload, ParsedForm};
 pub use entities::media_files;
 pub use error::{MediaError, MediaResult};
 pub use has_media::{HasMedia, InteractsWithMedia, Owner};
 pub use service::{url_for, FileAdder};
 pub use upload::Upload;
-
-/// Owner type and id of files uploaded in the admin media library.
-pub const LIBRARY_OWNER_TYPE: &str = "library";
-pub const LIBRARY_COLLECTION: &str = "library";
 
 pub struct MediaModule;
 
@@ -75,7 +71,7 @@ impl Module for MediaModule {
             permission: "media.view",
             icon: "fa-regular fa-images",
             order: 2,
-            match_children: true,
+            match_children: false,
         }]
     }
 }

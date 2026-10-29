@@ -6,7 +6,7 @@ use axum::{
 };
 use loco_rs::{hash, prelude::*};
 use module_auth::{same_origin, session, users, Auth};
-use module_media::{read_upload, InteractsWithMedia};
+use module_media::{read_form, InteractsWithMedia};
 use module_site_layout::Site;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use serde::Deserialize;
@@ -205,15 +205,15 @@ async fn upload_logo(
         return Ok(rejected());
     }
     let owner = user_owner(user.id);
-    let outcome = match read_upload(multipart, "logo").await {
-        Some(file) => {
+    let outcome = match read_form(multipart, "logo").await.into_file() {
+        Ok(file) => {
             owner
                 .add_media(&ctx, file)
                 .using_name("Logo")
                 .to_media_collection(LOGO_COLLECTION)
                 .await
         }
-        None => Err(module_media::MediaError::Empty),
+        Err(error) => Err(error),
     };
     match outcome {
         Ok(_) => Ok(Redirect::to("/account/logo?status=logo-saved").into_response()),

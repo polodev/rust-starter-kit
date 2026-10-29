@@ -1,40 +1,50 @@
 {% extends "layouts/admin.html" %}
 {% block content %}
-<div class="mb-6">
-  <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ title }}</h1>
-  <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Pictures and PDFs for the website. Each file gets a public address you can copy.</p>
-</div>
-
-{% if message %}
-<p class="mb-4 rounded-md px-3 py-2 text-sm {% if message.kind == "ok" %}bg-emerald-50 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200{% else %}bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-200{% endif %}" data-testid="media-message">{{ message.text }}</p>
-{% endif %}
-
-{% if can_manage %}
-<form method="post" action="/admin/media/upload" enctype="multipart/form-data" class="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800" data-testid="media-upload">
-  <input type="file" name="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" required
-         class="block text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-sm dark:text-gray-300 dark:file:bg-gray-700">
-  <button type="submit" class="rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:opacity-90">Upload</button>
-  <span class="text-xs text-gray-500">PNG, JPG, WebP, GIF or PDF, up to 2 MB.</span>
-</form>
-{% endif %}
-
-<div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5" data-testid="media-grid">
-  {% for item in items %}
-  <div class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-    <a href="{{ item.url }}" target="_blank" rel="noopener" class="flex h-36 items-center justify-center bg-gray-50 dark:bg-gray-900">
-      {% if item.is_image %}<img src="{{ item.url }}" alt="{{ item.name }}" loading="lazy" class="max-h-full max-w-full object-contain">{% else %}<i class="fa-regular fa-file-pdf text-4xl text-gray-400"></i>{% endif %}
-    </a>
-    <div class="space-y-2 p-3 text-sm">
-      <p class="truncate font-medium" title="{{ item.name }}">{{ item.name }}</p>
-      <p class="text-xs text-gray-500">{{ item.mime }} &middot; {{ item.kb }} KB &middot; {{ item.added }}</p>
-      <input type="text" readonly value="{{ item.url }}" onclick="this.select()" class="w-full rounded border border-gray-300 bg-gray-50 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-900">
-      {% if can_manage %}
-      <form method="post" action="/admin/media/{{ item.id }}/delete"><button type="submit" class="text-xs font-medium text-red-600 hover:underline dark:text-red-400">Delete</button></form>
-      {% endif %}
-    </div>
+<div class="mx-auto max-w-7xl space-y-3">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ title }}</h1>
+    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Every file owned by any model. Add or replace a file where it belongs, for example a page's feature image; use the owner link to get there.</p>
   </div>
-  {% else %}
-  <p class="col-span-full rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-600">No files yet.</p>
-  {% endfor %}
+
+  <form method="get" action="/admin/media" class="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800" data-testid="media-filters">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search by name" class="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900">
+    <select name="collection" class="rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm dark:border-gray-600 dark:bg-gray-900">
+      <option value="">All collections</option>
+      {% for name in collections %}<option value="{{ name }}" {% if name == collection %}selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+    <select name="kind" class="rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm dark:border-gray-600 dark:bg-gray-900">
+      <option value="">All types</option>
+      <option value="image" {% if kind == "image" %}selected{% endif %}>Images</option>
+      <option value="pdf" {% if kind == "pdf" %}selected{% endif %}>PDF</option>
+    </select>
+    <button type="submit" class="rounded-lg bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:opacity-90">Filter</button>
+    <span class="text-xs text-gray-500" data-testid="media-total">{{ total }} files</span>
+  </form>
+
+  <div class="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6" data-testid="media-grid">
+    {% for item in items %}
+    <div class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+      <a href="{{ item.url }}" target="_blank" rel="noopener" class="flex h-32 items-center justify-center bg-gray-50 dark:bg-gray-900">
+        {% if item.is_image %}<img src="{{ item.url }}" alt="{{ item.name }}" loading="lazy" class="max-h-full max-w-full object-contain">{% else %}<i class="fa-regular fa-file-pdf text-4xl text-gray-400"></i>{% endif %}
+      </a>
+      <div class="space-y-1 p-2.5 text-xs">
+        <p class="truncate text-sm font-medium" title="{{ item.name }}">{{ item.name }}</p>
+        <p class="text-gray-500"><span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-700">{{ item.collection }}</span> {{ item.kb }} KB &middot; {{ item.added }}</p>
+        <p class="text-gray-500">{% if item.public %}Public{% else %}Private{% endif %} &middot;
+          {% if item.owner_url %}<a href="{{ item.owner_url }}" class="font-medium text-brand-navy underline dark:text-brand-amber">{{ item.owner_label }}</a>{% else %}{{ item.owner_label }}{% endif %}</p>
+      </div>
+    </div>
+    {% else %}
+    <p class="col-span-full rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-600">No files found.</p>
+    {% endfor %}
+  </div>
+
+  {% if pages > 1 %}
+  <nav class="flex items-center justify-between text-sm" aria-label="Pagination">
+    {% if prev %}<a href="/admin/media?q={{ q }}&collection={{ collection }}&kind={{ kind }}&page={{ prev }}" class="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">Previous</a>{% else %}<span></span>{% endif %}
+    <span class="text-gray-500">Page {{ page }} of {{ pages }}</span>
+    {% if next %}<a href="/admin/media?q={{ q }}&collection={{ collection }}&kind={{ kind }}&page={{ next }}" class="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">Next</a>{% else %}<span></span>{% endif %}
+  </nav>
+  {% endif %}
 </div>
 {% endblock content %}
