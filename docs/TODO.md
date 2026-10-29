@@ -14,6 +14,8 @@ Update this file as work finishes.
 - [x] Module hooks: admin menu, apply, schedule (loco-modular)
 - [x] `role-permission` module: 6-role hierarchy new_employee < business_development < marketing < employee < admin < developer; developer holds every permission incl. the role manager; `dashboard.view` = "View admin dashboard"
 
+- [x] Public GitHub repo https://github.com/polodev/rust-starter-kit (secret scan clean, `.env` ignored)
+
 ## Queue (do in this order)
 1. [x] Navbar responsive, exactly like Dokani (navy bar, EN switch, theme dropdown, amber avatar, hamburger)
 2. [x] `auth` module: login, register, logout, DB sessions, CSRF origin check, login lockout (15 tests)
@@ -24,6 +26,6 @@ Update this file as work finishes.
 7. [x] `accounts` module: profile page, change password, logo upload (uses media), sub-layout with logout
 8. [x] Tests for auth, roles, admin, media, accounts; tutorials 14-17
 9. [ ] Answer: hot reload (needs `cargo-watch`; module templates are compiled in, so a dev-mode read-from-disk option may help)
-10. [~] Dashboard page shows the sidebar navigation items (analyse eng4 and Bimafy dashboards first, then copy the pattern)
+10. [x] Dashboard page shows every sidebar link as compact chips with search, like eng4 (Bimafy's `/dashboard/links` does the same by scraping the sidebar)
 11. [ ] Generators that follow Loco: make:model, make:controller, make:scaffold with `--module`, then make:resource
 12. [ ] `api` module under `/api/v1`, URL-based tenancy like Dokani, R2 storage use, settings, activity log, queue pages
