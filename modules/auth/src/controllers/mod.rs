@@ -43,6 +43,11 @@ struct RegisterForm {
     password_confirmation: String,
 }
 
+/// The Google button shows only when the app has a Google client id.
+fn google_login_enabled() -> bool {
+    std::env::var("GOOGLE_CLIENT_ID").is_ok_and(|id| !id.trim().is_empty())
+}
+
 fn secure_cookies(ctx: &AppContext) -> bool {
     ctx.environment == Environment::Production
 }
@@ -95,12 +100,14 @@ async fn login_form(
     if user.is_some() {
         return Ok(axum::response::Redirect::to(&next).into_response());
     }
-    let notice = query.notice.filter(|key| key == "login-needed");
+    let notice = query
+        .notice
+        .filter(|key| matches!(key.as_str(), "login-needed" | "login-google-failed"));
     page(
         &v,
         "auth/login.html",
         StatusCode::OK,
-        site.data(json!({ "next": next, "email": "", "notice": notice })),
+        site.data(json!({ "next": next, "email": "", "notice": notice, "google_login": google_login_enabled() })),
     )
 }
 
@@ -119,7 +126,7 @@ async fn login(
             &v,
             "auth/login.html",
             status,
-            site.data(json!({ "next": next, "email": email, "error": error })),
+            site.data(json!({ "next": next, "email": email, "error": error, "google_login": google_login_enabled() })),
         )
     };
 
@@ -178,7 +185,7 @@ async fn register_form(
     )
 }
 
-fn valid_email(email: &str) -> bool {
+pub fn valid_email(email: &str) -> bool {
     let Some((local, domain)) = email.split_once('@') else {
         return false;
     };

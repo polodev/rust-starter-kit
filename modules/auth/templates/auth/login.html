@@ -23,6 +23,11 @@
     <button type="submit" class="w-full rounded-md bg-brand-amber px-4 py-2 font-medium text-white hover:bg-amber-600">{{ t(key="login-submit", lang=tag) }}</button>
   </form>
 
+  {% if google_login %}
+  <div class="mt-6 flex items-center gap-3 text-xs uppercase text-slate-400"><span class="h-px flex-1 bg-slate-200 dark:bg-gray-700"></span>{{ t(key="login-or", lang=tag) }}<span class="h-px flex-1 bg-slate-200 dark:bg-gray-700"></span></div>
+  <a href="/auth/google/redirect" data-testid="google-login" class="mt-4 flex w-full items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 hover:bg-slate-50 dark:border-gray-600 dark:bg-gray-900 dark:text-slate-100 dark:hover:bg-gray-800"><i class="fa-brands fa-google"></i>{{ t(key="login-google", lang=tag) }}</a>
+  {% endif %}
+
   <p class="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">
     {{ t(key="login-no-account", lang=tag) }}
     <a href="/register" class="font-medium text-brand-navy hover:underline dark:text-brand-amber">{{ t(key="nav-register", lang=tag) }}</a>

@@ -1,0 +1,76 @@
+{% extends "layouts/admin.html" %}
+{% block content %}
+<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ title }}</h1>
+    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Messages from the public contact form. Click a message to read it and mark it as replied. <span data-testid="waiting-count">{{ waiting }}</span> waiting.</p>
+  </div>
+  <div class="inline-flex overflow-hidden rounded-md border border-brand-navy text-sm" data-testid="contact-filter">
+    <a href="/admin/contacts" class="px-3 py-1.5 {% if not filter %}bg-brand-navy text-white{% else %}bg-white text-brand-navy hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-100{% endif %}">All</a>
+    <a href="/admin/contacts?status=new" class="border-l border-brand-navy px-3 py-1.5 {% if filter == 'new' %}bg-brand-navy text-white{% else %}bg-white text-brand-navy hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-100{% endif %}">Not replied</a>
+    <a href="/admin/contacts?status=replied" class="border-l border-brand-navy px-3 py-1.5 {% if filter == 'replied' %}bg-brand-navy text-white{% else %}bg-white text-brand-navy hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-100{% endif %}">Replied</a>
+  </div>
+</div>
+
+<form method="get" action="/admin/contacts" class="mb-3 flex gap-2">
+  {% if filter %}<input type="hidden" name="status" value="{{ filter }}">{% endif %}
+  <input type="search" name="q" value="{{ q }}" placeholder="Search name, email or message" class="w-full max-w-sm rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900">
+  <button type="submit" class="rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:opacity-90">Search</button>
+</form>
+
+<div x-data="{
+       isOpen: false, html: '', loading: false,
+       async open(id) {
+         this.isOpen = true; this.loading = true; this.html = '';
+         try {
+           const res = await fetch('/admin/contacts/' + id, { headers: { 'X-Component': '1' }, credentials: 'same-origin' });
+           this.html = await res.text();
+         } catch (e) { this.html = '<p class=&quot;text-red-600&quot;>Could not load the message.</p>'; }
+         this.loading = false;
+       },
+       close() { this.isOpen = false; },
+       updated(el) {
+         if (!el || !el.dataset || !el.dataset.contactId) return;
+         const replied = el.dataset.status === 'replied';
+         const badge = document.querySelector('[data-status-badge=&quot;' + el.dataset.contactId + '&quot;]');
+         if (badge) {
+           badge.textContent = replied ? 'Replied' : 'Not replied';
+           badge.className = 'rounded-full px-2 py-0.5 text-xs font-medium ' + (replied ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300');
+         }
+       }
+     }"
+     @keydown.escape.window="close()"
+     @component:updated.window="updated($event.target)">
+  <div class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm" data-testid="contacts-table">
+        <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
+          <tr><th class="px-4 py-2">ID</th><th class="px-4 py-2">From</th><th class="px-4 py-2">Subject</th><th class="px-4 py-2">Received</th><th class="px-4 py-2">Status</th></tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+          {% for item in contacts %}
+          <tr @click="open({{ item.id }})" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40" data-testid="contact-row-{{ item.id }}">
+            <td class="px-4 py-2"><a href="/admin/contacts/{{ item.id }}" @click.prevent.stop="open({{ item.id }})" data-testid="id-link" class="font-mono text-brand-navy underline hover:text-orange-600 dark:text-brand-amber">{{ item.id }}</a></td>
+            <td class="px-4 py-2"><p class="font-medium">{{ item.name }}</p><p class="text-xs text-gray-500">{{ item.email }}</p></td>
+            <td class="max-w-md truncate px-4 py-2">{% if item.subject %}{{ item.subject }}{% else %}<span class="text-gray-400">{{ item.message | truncate(length=60) }}</span>{% endif %}</td>
+            <td class="whitespace-nowrap px-4 py-2">{{ item.received }}</td>
+            <td class="px-4 py-2"><span data-status-badge="{{ item.id }}" class="rounded-full px-2 py-0.5 text-xs font-medium {% if item.replied %}bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300{% else %}bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300{% endif %}">{% if item.replied %}Replied{% else %}Not replied{% endif %}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">No messages yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div x-show="isOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" data-testid="contact-modal">
+    <div class="absolute inset-0 bg-black/50" @click="close()"></div>
+    <div class="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl dark:bg-gray-800">
+      <button type="button" @click="close()" class="absolute right-3 top-3 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      <p x-show="loading" class="text-sm text-gray-500">Loading…</p>
+      <div x-html="html"></div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

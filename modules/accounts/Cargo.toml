@@ -19,3 +19,6 @@ module-site-layout = { path = "../site-layout" }
 module-auth = { path = "../auth" }
 module-media = { path = "../media" }
 module-role-permission = { path = "../role-permission" }
+module-admin-layout = { path = "../admin-layout" }
+module-auth-api = { path = "../auth-api" }
+uuid = { workspace = true }

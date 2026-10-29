@@ -1,3 +1,5 @@
+mod admin_users;
+
 use axum::{
     extract::{Multipart, Query},
     http::{HeaderMap, StatusCode},
@@ -246,7 +248,8 @@ async fn remove_logo(
 }
 
 pub fn routes() -> Vec<Routes> {
-    vec![Routes::new()
+    let mut all = admin_users::routes();
+    all.extend(vec![Routes::new()
         .add("/account", get(index))
         .add("/account/profile", get(profile).post(update_profile))
         .add(
@@ -254,5 +257,6 @@ pub fn routes() -> Vec<Routes> {
             get(password_form).post(update_password),
         )
         .add("/account/logo", get(logo_form).post(upload_logo))
-        .add("/account/logo/remove", post(remove_logo))]
+        .add("/account/logo/remove", post(remove_logo))]);
+    all
 }

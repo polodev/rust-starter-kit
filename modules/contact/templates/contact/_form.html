@@ -1,0 +1,40 @@
+{# The contact "component": rendered inside the page, and returned alone to the component script after a submit. #}
+<div data-component-root id="contact-component" data-testid="contact-component">
+  {% if sent %}
+  <p class="mb-6 rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200" role="status" data-testid="contact-success">{{ t(key="contact-success", lang=tag) }}</p>
+  {% endif %}
+  {% if failure %}
+  <p class="mb-6 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-200" role="alert" data-testid="contact-failure">{{ t(key=failure, lang=tag) }}</p>
+  {% endif %}
+  <form method="post" action="/contact" data-component class="space-y-4" novalidate>
+    {# Honeypot: hidden from people, tempting to bots. Anything typed here means the sender is a script. #}
+    <div style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+      <label>Website <input type="text" name="website" value="" tabindex="-1" autocomplete="off" data-testid="contact-honeypot"></label>
+    </div>
+    <label class="block">
+      <span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{{ t(key="contact-name", lang=tag) }}</span>
+      <input type="text" name="name" value="{{ values.name | default(value='') }}" maxlength="80" required autocomplete="name"
+             class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:border-gray-600 dark:bg-gray-900 dark:text-slate-100">
+      {% if errors.name %}<span class="mt-1 block text-sm text-red-600 dark:text-red-400" data-testid="error-name">{{ t(key=errors.name, lang=tag) }}</span>{% endif %}
+    </label>
+    <label class="block">
+      <span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{{ t(key="contact-email", lang=tag) }}</span>
+      <input type="email" name="email" value="{{ values.email | default(value='') }}" maxlength="254" required autocomplete="email"
+             class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:border-gray-600 dark:bg-gray-900 dark:text-slate-100">
+      {% if errors.email %}<span class="mt-1 block text-sm text-red-600 dark:text-red-400" data-testid="error-email">{{ t(key=errors.email, lang=tag) }}</span>{% endif %}
+    </label>
+    <label class="block">
+      <span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{{ t(key="contact-subject", lang=tag) }}</span>
+      <input type="text" name="subject" value="{{ values.subject | default(value='') }}" maxlength="150"
+             class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:border-gray-600 dark:bg-gray-900 dark:text-slate-100">
+      {% if errors.subject %}<span class="mt-1 block text-sm text-red-600 dark:text-red-400" data-testid="error-subject">{{ t(key=errors.subject, lang=tag) }}</span>{% endif %}
+    </label>
+    <label class="block">
+      <span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{{ t(key="contact-message", lang=tag) }}</span>
+      <textarea name="message" rows="6" maxlength="5000" required
+                class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:border-gray-600 dark:bg-gray-900 dark:text-slate-100">{{ values.message | default(value='') }}</textarea>
+      {% if errors.message %}<span class="mt-1 block text-sm text-red-600 dark:text-red-400" data-testid="error-message">{{ t(key=errors.message, lang=tag) }}</span>{% endif %}
+    </label>
+    <button type="submit" data-testid="contact-submit" class="rounded-md bg-brand-amber px-5 py-2 font-medium text-white hover:bg-amber-600 disabled:opacity-60">{{ t(key="contact-send", lang=tag) }}</button>
+  </form>
+</div>

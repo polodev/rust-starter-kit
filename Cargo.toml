@@ -65,3 +65,4 @@ module-pages = { path = "modules/pages" }
 module-media = { path = "modules/media" }
 axum-test = { version = "17.0.1", features = [] }
 module-auth = { path = "modules/auth" }
+module-contact = { path = "modules/contact" }

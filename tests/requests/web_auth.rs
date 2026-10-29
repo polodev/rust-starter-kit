@@ -389,7 +389,7 @@ async fn sidebar_and_pages_follow_the_role_hierarchy() {
         );
         assert_eq!(
             server
-                .get("/admin/roles")
+                .get("/admin/role-permissions")
                 .add_header("cookie", cookie)
                 .await
                 .status_code(),
@@ -409,11 +409,16 @@ async fn developer_can_manage_roles_but_not_their_own() {
         let cookie = login(&server, DEMO_EMAIL, DEMO_PASSWORD).await;
 
         let roles = server
-            .get("/admin/roles")
+            .get("/admin/role-permissions/roles")
             .add_header("cookie", cookie.clone())
             .await;
         roles.assert_status_ok();
-        let html = roles.text();
+        let matrix = server
+            .get("/admin/role-permissions/permissions-with-role-info")
+            .add_header("cookie", cookie.clone())
+            .await;
+        matrix.assert_status_ok();
+        let html = roles.text() + &matrix.text();
         assert!(
             html.contains("Business Development")
                 && html.contains("Marketing")
@@ -518,13 +523,14 @@ async fn dashboard_hub_lists_every_permitted_sidebar_link_with_counts() {
             .text();
         assert!(html.contains(r#"data-testid="nav-hub""#) && html.contains("All navigation links"));
         assert!(
-            html.contains("4 sections") && html.contains("6 links"),
+            html.contains("4 sections") && html.contains("7 links"),
             "overview, content, people and access, system"
         );
         for label in [
             "Dashboard",
             "Pages",
             "Media library",
+            "Contacts",
             "Users",
             "Roles and permissions",
             "Scheduled jobs",
@@ -564,7 +570,7 @@ async fn dashboard_hub_lists_every_permitted_sidebar_link_with_counts() {
             .add_header("cookie", cookie)
             .await
             .text();
-        for label in ["Dashboard", "Pages", "Users", "Media library"] {
+        for label in ["Dashboard", "Pages", "Users", "Media library", "Contacts"] {
             assert!(
                 html.contains(&format!(r#"data-nav-link data-label="{label}""#)),
                 "marketing should see {label}"
@@ -576,7 +582,7 @@ async fn dashboard_hub_lists_every_permitted_sidebar_link_with_counts() {
                 "marketing must not see {label}"
             );
         }
-        assert!(html.contains("4 links"));
+        assert!(html.contains("5 links"));
     })
     .await;
 }

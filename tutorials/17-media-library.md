@@ -95,7 +95,7 @@ Form: `<form method="post" enctype="multipart/form-data"><input type="file" name
 ## What it checks for you
 
 - **Content, not name:** the type is read from the first bytes (PNG, JPEG, GIF, WebP, PDF). A PHP file called `x.png` is rejected. SVG is not accepted because it can carry scripts.
-- **Size:** each collection has `max_bytes` (default 2 MB, which is also Loco's request limit).
+- **Size:** each collection has `max_bytes` (default 10 MB, which is also Loco's request limit).
 - **Names:** the stored name is sanitised, and the extension follows the content type.
 - **Nothing is left behind** when a file is rejected or the database insert fails.
 
@@ -147,8 +147,8 @@ Search by name, filter by collection and type, 24 rows per page. jQuery and Magn
 
 Every row has a `model_type` and `model_id`, the same as Spatie, so a loose file belongs to a built-in owner called **`library`** (id 0). The upload box at the top of `/admin/media` (needs `media.manage`) uses it:
 
-- Drag and drop, or browse. Pick **several files**; each one is sent in its own request, so each is checked and reported separately and stays under Loco's 2 MB request limit.
-- PNG, JPG, WebP, GIF or PDF, up to 2 MB each. The content is checked, not the name.
+- Drag and drop, or browse. Pick **several files**; each one is sent in its own request, so each is checked and reported separately and stays under Loco's 10 MB request limit.
+- PNG, JPG, WebP, GIF or PDF, up to 10 MB each. The content is checked, not the name.
 - Library files are **public**. Use **Copy link** to paste the address into a page's text.
 - **Delete** exists only for library files. A file that belongs to a record (like a page's feature image) is changed on that record, and the library refuses to delete it.
 - Without JavaScript the same form uploads one file at a time.
@@ -163,7 +163,7 @@ let alt = form.fields.get("alt").cloned().unwrap_or_default();
 let file = form.into_file()?;                                    // Err(Empty) or Err(TooLarge) explains why
 ```
 
-Loco limits a request body to 2 MB. A bigger upload breaks the stream, and `into_file` reports that as `TooLarge` so the visitor sees "too large", not "nothing chosen".
+Loco limits a request body to 10 MB (set by `limit_payload` in `config/*.yaml`). A bigger upload breaks the stream, and `into_file` reports that as `TooLarge` so the visitor sees "too large", not "nothing chosen".
 
 <!-- foot:start -->
 ---

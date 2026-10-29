@@ -1,0 +1,21 @@
+[package]
+name = "module-social-auth"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+loco-modular = { workspace = true }
+loco-rs = { workspace = true }
+sea-orm = { workspace = true }
+sea-orm-migration = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+axum = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+module-auth = { path = "../auth" }
+module-auth-api = { path = "../auth-api" }

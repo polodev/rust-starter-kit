@@ -6,9 +6,12 @@ pub fn all() -> Vec<Box<dyn Module>> {
         Box::new(module_accounts::AccountsModule),
         Box::new(module_admin_layout::AdminLayoutModule),
         Box::new(module_auth::AuthModule),
+        Box::new(module_auth_api::AuthApiModule),
+        Box::new(module_contact::ContactModule),
         Box::new(module_media::MediaModule),
         Box::new(module_pages::PagesModule),
         Box::new(module_role_permission::RolePermissionModule),
         Box::new(module_site_layout::SiteLayoutModule),
+        Box::new(module_social_auth::SocialAuthModule),
     ]
 }

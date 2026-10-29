@@ -13,3 +13,6 @@ module-role-permission = { path = "../../modules/role-permission" }
 module-auth = { path = "../../modules/auth" }
 module-admin-layout = { path = "../../modules/admin-layout" }
 module-media = { path = "../../modules/media" }
+module-auth-api = { path = "../../modules/auth-api" }
+module-social-auth = { path = "../../modules/social-auth" }
+module-contact = { path = "../../modules/contact" }

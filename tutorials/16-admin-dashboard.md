@@ -33,7 +33,7 @@ Style follows eng4 (sidebar sections, quick search) with Dokani's navy top bar. 
 |---|---|---|
 | `/admin` | `dashboard.view` | Stat cards and the newest users |
 | `/admin/users` | `users.view` | All users with their role; developers can change roles |
-| `/admin/roles` | `roles.view` | Roles and the permission matrix; developers can sync |
+| `/admin/role-permissions` | `roles.view` | Overview, roles, permissions, matrix, user assignments, backend links; developers can sync and assign |
 | `/admin/schedule` | `queue.view` | Scheduled jobs from modules and config |
 | `/admin/pages` | `pages.view` | Pages list: click a title to open it, **Edit** to change it |
 | `/admin/pages/{id}` | `pages.view` | The page's **show page**: details, both languages as visitors see them, feature image, an **Edit** button |

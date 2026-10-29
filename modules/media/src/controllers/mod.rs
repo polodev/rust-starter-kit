@@ -234,7 +234,7 @@ async fn library(
     };
     let (uploaded, failed) = (count("uploaded"), count("failed"));
     let reason = match query.counts.get("reason").map(String::as_str) {
-        Some("size") => " It is larger than 2 MB.",
+        Some("size") => " It is larger than 10 MB.",
         Some("type") => " Only PNG, JPG, WebP, GIF and PDF files are accepted.",
         Some("empty") => " No file was chosen.",
         _ => "",

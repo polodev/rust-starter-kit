@@ -18,3 +18,4 @@ tracing = { workspace = true }
 module-site-layout = { path = "../site-layout" }
 module-auth = { path = "../auth" }
 module-role-permission = { path = "../role-permission" }
+serde_urlencoded = "0.7"

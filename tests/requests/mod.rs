@@ -1,7 +1,11 @@
+mod admin_users;
+mod api_auth;
 mod auth;
+mod contact;
 mod demo_user;
 mod media_accounts;
 mod pages;
 mod pages_admin;
 mod prepare_data;
+mod social_login;
 mod web_auth;

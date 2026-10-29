@@ -12,6 +12,7 @@ use loco_modular::{Module, ScheduledJob};
 use loco_rs::{app::AppContext, controller::Routes, task::Tasks};
 use sea_orm_migration::MigrationTrait;
 
+pub use controllers::valid_email;
 pub use entities::{sessions, users};
 pub use guard::{safe_next, same_origin, Auth, AuthUser, OptionalAuth};
 

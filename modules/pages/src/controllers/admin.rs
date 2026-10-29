@@ -109,7 +109,7 @@ fn status_message(query: &EditQuery) -> Option<Value> {
         (Some("unpublished"), _) => ("ok", "The page is now hidden from visitors."),
         (_, Some("empty")) => ("error", "Choose an image first."),
         (_, Some("type")) => ("error", "Upload a PNG, JPG, WebP or GIF image."),
-        (_, Some("size")) => ("error", "The image is larger than 2 MB."),
+        (_, Some("size")) => ("error", "The image is larger than 10 MB."),
         (_, Some(_)) => ("error", "The image could not be saved."),
         _ => return None,
     };

@@ -1,0 +1,20 @@
+[package]
+name = "module-auth-api"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+loco-modular = { workspace = true }
+loco-rs = { workspace = true }
+sea-orm = { workspace = true }
+sea-orm-migration = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+axum = { workspace = true }
+tracing = { workspace = true }
+module-auth = { path = "../auth" }
+module-role-permission = { path = "../role-permission" }
+uuid = { workspace = true }

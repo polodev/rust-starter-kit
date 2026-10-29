@@ -6,15 +6,15 @@ use axum::{
 };
 use loco_rs::prelude::*;
 use module_auth::{same_origin, users};
-use module_role_permission::{
-    access_for, assign_role, permissions, revoke_role, role_user, roles, sync,
-};
-use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
+use module_role_permission::{assign_role, revoke_role, role_user, roles};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
 
 use crate::page::AdminPage;
+
+mod role_permissions;
 
 #[debug_handler]
 async fn dashboard(ViewEngine(v): ViewEngine<TeraView>, page: AdminPage) -> Result<Response> {
@@ -108,7 +108,7 @@ async fn users_index(
     page.render(
         &v,
         "admin/users.html",
-        json!({ "title": "Users", "users": rows, "role_options": role_options, "can_assign": page.can("roles.assign") }),
+        json!({ "title": "Users", "users": rows, "role_options": role_options, "can_assign": page.can("roles.assign"), "can_manage": page.can("users.manage") }),
     )
 }
 
@@ -152,83 +152,6 @@ async fn assign_user_role(
 }
 
 #[debug_handler]
-async fn roles_index(
-    ViewEngine(v): ViewEngine<TeraView>,
-    State(ctx): State<AppContext>,
-    page: AdminPage,
-) -> Result<Response> {
-    if !page.can("roles.view") {
-        return page.forbidden(&v);
-    }
-    let all_roles = roles::Entity::find()
-        .filter(roles::Column::IsActive.eq(true))
-        .order_by_asc(roles::Column::Rank)
-        .all(&ctx.db)
-        .await?;
-    let all_permissions = permissions::Entity::find()
-        .filter(permissions::Column::IsActive.eq(true))
-        .order_by_asc(permissions::Column::Key)
-        .all(&ctx.db)
-        .await?;
-    let links = module_role_permission::permission_role::Entity::find()
-        .all(&ctx.db)
-        .await?;
-
-    let columns: Vec<_> = all_roles
-        .iter()
-        .map(|role| json!({ "name": role.name, "slug": role.slug }))
-        .collect();
-    let mut matrix = Vec::new();
-    for permission in &all_permissions {
-        let cells: Vec<bool> = all_roles
-            .iter()
-            .map(|role| {
-                links
-                    .iter()
-                    .any(|link| link.role_id == role.id && link.permission_id == permission.id)
-            })
-            .collect();
-        matrix.push(json!({ "key": permission.key, "name": permission.name, "group": permission.group_name, "cells": cells }));
-    }
-    let mut role_rows = Vec::new();
-    for role in &all_roles {
-        let holders = role_user::Entity::find()
-            .filter(role_user::Column::RoleId.eq(role.id))
-            .count(&ctx.db)
-            .await?;
-        let granted = links.iter().filter(|link| link.role_id == role.id).count();
-        role_rows.push(json!({
-            "rank": role.rank, "name": role.name, "slug": role.slug, "description": role.description,
-            "permissions": granted, "holders": holders,
-        }));
-    }
-    page.render(
-        &v,
-        "admin/roles.html",
-        json!({ "title": "Roles and permissions", "roles": role_rows, "columns": columns, "matrix": matrix, "can_sync": page.can("roles.sync") }),
-    )
-}
-
-#[debug_handler]
-async fn roles_sync(
-    ViewEngine(v): ViewEngine<TeraView>,
-    State(ctx): State<AppContext>,
-    headers: HeaderMap,
-    page: AdminPage,
-) -> Result<Response> {
-    if !page.can("roles.sync") {
-        return page.forbidden(&v);
-    }
-    if !same_origin(&headers) {
-        return Ok((StatusCode::FORBIDDEN, "request rejected").into_response());
-    }
-    sync(&ctx.db).await?;
-    // Permissions of the signed-in person may have changed; the next request reloads them.
-    let _ = access_for(&ctx.db, page.user.id).await?;
-    Ok(Redirect::to("/admin/roles?synced=1").into_response())
-}
-
-#[debug_handler]
 async fn schedule_index(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
@@ -258,11 +181,13 @@ async fn schedule_index(
 }
 
 pub fn routes() -> Vec<Routes> {
-    vec![Routes::new()
-        .add("/admin", get(dashboard))
-        .add("/admin/users", get(users_index))
-        .add("/admin/users/{id}/role", post(assign_user_role))
-        .add("/admin/roles", get(roles_index))
-        .add("/admin/roles/sync", post(roles_sync))
-        .add("/admin/schedule", get(schedule_index))]
+    let mut all = role_permissions::routes();
+    all.push(
+        Routes::new()
+            .add("/admin", get(dashboard))
+            .add("/admin/users", get(users_index))
+            .add("/admin/users/{id}/role", post(assign_user_role))
+            .add("/admin/schedule", get(schedule_index)),
+    );
+    all
 }

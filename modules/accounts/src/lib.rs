@@ -50,6 +50,14 @@ impl Module for AccountsModule {
                 "accounts/logo.html",
                 include_str!("../templates/accounts/logo.html"),
             ),
+            (
+                "admin/user_show.html",
+                include_str!("../templates/admin/user_show.html"),
+            ),
+            (
+                "admin/user_edit.html",
+                include_str!("../templates/admin/user_edit.html"),
+            ),
         ]
     }
 

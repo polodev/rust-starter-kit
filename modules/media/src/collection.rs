@@ -9,7 +9,7 @@ pub const DOCUMENTS: &[&str] = &[
     "application/pdf",
 ];
 /// 2 MiB, which is also Loco's default request body limit.
-pub const DEFAULT_MAX_BYTES: usize = 2 * 1024 * 1024;
+pub const DEFAULT_MAX_BYTES: usize = 10 * 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CollectionKind {

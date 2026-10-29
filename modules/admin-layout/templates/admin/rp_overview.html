@@ -1,0 +1,11 @@
+{% extends "layouts/admin.html" %}
+{% block breadcrumb %}<nav class="mb-3 flex flex-wrap items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400" aria-label="Breadcrumb" data-testid="breadcrumb"><a href="/admin" class="hover:text-brand-navy hover:underline dark:hover:text-brand-amber">Dashboard</a> <span aria-hidden="true">&rsaquo;</span> <span class="font-medium text-gray-700 dark:text-gray-200" aria-current="page">Roles and permissions</span></nav>{% endblock breadcrumb %}
+{% block content %}
+{% include "admin/rp_tabs.html" %}
+<div class="mb-4 flex flex-wrap items-start justify-between gap-3"><div><h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Advanced authorization overview</h1><p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Definitions come from code and are synchronized into the database.</p></div>{% if can_sync %}<form method="post" action="/admin/role-permissions/sync" onsubmit="return confirm('Synchronize roles and permissions from code?')"><button type="submit" data-testid="sync-button" class="rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:opacity-90"><i class="fa-solid fa-rotate mr-1"></i>Sync from code</button></form>{% endif %}</div><div class="grid gap-4 sm:grid-cols-3" data-testid="rp-counts">
+  <div class="rounded-lg bg-brand-navy p-5 text-white"><p class="text-3xl font-bold">{{ role_count }}</p><p class="text-sm opacity-90">Active roles</p></div>
+  <div class="rounded-lg bg-sky-600 p-5 text-white"><p class="text-3xl font-bold">{{ permission_count }}</p><p class="text-sm opacity-90">Active permissions</p></div>
+  <div class="rounded-lg bg-emerald-600 p-5 text-white"><p class="text-3xl font-bold">{{ assigned_count }}</p><p class="text-sm opacity-90">People with a role</p></div>
+</div>
+<p class="mt-4 rounded-md bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:bg-sky-900/20 dark:text-sky-200">Use the tabs above to review roles, permissions, the permission matrix, user assignments, or the admin pages each permission protects.</p>
+{% endblock content %}

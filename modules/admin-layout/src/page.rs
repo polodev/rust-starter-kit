@@ -33,6 +33,8 @@ pub struct AdminPage {
     pub user: AuthUser,
     pub path: String,
     pub nav: Vec<NavSection>,
+    /// The person's profile image, when they have one (added by the accounts module).
+    pub avatar_url: Option<String>,
 }
 
 impl AdminPage {
@@ -47,6 +49,7 @@ impl AdminPage {
                 "name": self.user.name,
                 "email": self.user.email,
                 "initial": self.user.name.chars().next().map(|c| c.to_uppercase().to_string()).unwrap_or_default(),
+                "avatar_url": self.avatar_url,
                 "role": self.user.access.role.as_ref().map(|role| role.name.clone()),
             },
             "nav": self.nav,
@@ -108,7 +111,16 @@ impl<S: Send + Sync> FromRequestParts<S> for AdminPage {
             .unwrap_or_default();
         let path = parts.uri.path().to_string();
         let nav = build_nav(&menu.0, &user, &path);
-        Ok(AdminPage { user, path, nav })
+        let avatar_url = parts
+            .extensions
+            .get::<module_site_layout::SiteUser>()
+            .and_then(|site_user| site_user.avatar_url.clone());
+        Ok(AdminPage {
+            user,
+            path,
+            nav,
+            avatar_url,
+        })
     }
 }
 

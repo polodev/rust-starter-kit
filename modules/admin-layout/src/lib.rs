@@ -45,8 +45,40 @@ impl Module for AdminLayoutModule {
                 include_str!("../templates/admin/users.html"),
             ),
             (
-                "admin/roles.html",
-                include_str!("../templates/admin/roles.html"),
+                "admin/rp_tabs.html",
+                include_str!("../templates/admin/rp_tabs.html"),
+            ),
+            (
+                "admin/rp_overview.html",
+                include_str!("../templates/admin/rp_overview.html"),
+            ),
+            (
+                "admin/rp_roles.html",
+                include_str!("../templates/admin/rp_roles.html"),
+            ),
+            (
+                "admin/rp_role_show.html",
+                include_str!("../templates/admin/rp_role_show.html"),
+            ),
+            (
+                "admin/rp_permissions.html",
+                include_str!("../templates/admin/rp_permissions.html"),
+            ),
+            (
+                "admin/rp_matrix.html",
+                include_str!("../templates/admin/rp_matrix.html"),
+            ),
+            (
+                "admin/rp_users.html",
+                include_str!("../templates/admin/rp_users.html"),
+            ),
+            (
+                "admin/rp_user_edit.html",
+                include_str!("../templates/admin/rp_user_edit.html"),
+            ),
+            (
+                "admin/rp_locations.html",
+                include_str!("../templates/admin/rp_locations.html"),
             ),
             (
                 "admin/schedule.html",
@@ -82,7 +114,7 @@ impl Module for AdminLayoutModule {
             MenuItem {
                 section: "People and access",
                 label: "Roles and permissions",
-                href: "/admin/roles",
+                href: "/admin/role-permissions",
                 permission: "roles.view",
                 icon: "fa-solid fa-user-shield",
                 order: 2,

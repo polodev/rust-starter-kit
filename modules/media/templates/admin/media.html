@@ -1,7 +1,8 @@
 {% extends "layouts/admin.html" %}
 {% block head %}<link rel="stylesheet" href="/static/vendor/magnific-popup/magnific-popup.min.css">{% endblock head %}
+{% block breadcrumb %}<nav class="mb-3 flex flex-wrap items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400" aria-label="Breadcrumb" data-testid="breadcrumb"><a href="/admin" class="hover:text-brand-navy hover:underline dark:hover:text-brand-amber">Dashboard</a> <span aria-hidden="true">&rsaquo;</span> <span class="font-medium text-gray-700 dark:text-gray-200" aria-current="page">Media library</span></nav>{% endblock breadcrumb %}
 {% block content %}
-<div class="mx-auto max-w-7xl space-y-3">
+<div class="space-y-3">
   <div>
     <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ title }}</h1>
     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Every file owned by a model. Click a thumbnail to preview it, or the entity to open the record the file belongs to and change it there.</p>
@@ -17,7 +18,7 @@
       <label id="dropzone" for="file-input" class="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-4 py-6 text-center transition hover:border-orange-400 hover:bg-orange-50/40 dark:border-gray-600 dark:hover:bg-gray-900">
         <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-400"></i>
         <span class="mt-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Drag and drop files here, or <span class="text-orange-600 underline">browse</span></span>
-        <span class="mt-1 text-xs text-gray-500">PNG, JPG, WebP, GIF or PDF, up to 2 MB each. These files are not attached to any record.</span>
+        <span class="mt-1 text-xs text-gray-500">PNG, JPG, WebP, GIF or PDF, up to 10 MB each. These files are not attached to any record.</span>
         <input id="file-input" type="file" name="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" required class="sr-only">
       </label>
       <ul id="upload-queue" class="mt-2 space-y-1 text-sm" aria-live="polite"></ul>
@@ -49,13 +50,14 @@
       <table class="min-w-full text-sm" data-testid="media-table">
         <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
           <tr>
-            <th class="px-4 py-2">Preview</th><th class="px-4 py-2">Name</th><th class="px-4 py-2">Entity</th><th class="px-4 py-2">Collection</th>
+            <th class="px-4 py-2">ID</th><th class="px-4 py-2">Preview</th><th class="px-4 py-2">Name</th><th class="px-4 py-2">Entity</th><th class="px-4 py-2">Collection</th>
             <th class="px-4 py-2">Type</th><th class="px-4 py-2">Size</th><th class="px-4 py-2">Access</th><th class="px-4 py-2">Added</th><th class="px-4 py-2 text-right">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
           {% for item in items %}
           <tr data-media-row>
+            <td class="px-4 py-2"><a href="{{ item.url }}" target="_blank" rel="noopener" data-testid="id-link" class="font-mono text-brand-navy underline hover:text-orange-600 dark:text-brand-amber">{{ item.id }}</a></td>
             <td class="px-4 py-2">
               {% if item.is_image %}
               <a href="{{ item.url }}" class="media-popup block h-12 w-16 overflow-hidden rounded border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900" title="{{ item.name }}" data-testid="media-thumb">
@@ -84,7 +86,7 @@
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">No files found.</td></tr>
+          <tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">No files found.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -106,7 +108,7 @@
 <script>
   // Thumbnails open in a Magnific Popup lightbox; the images on this page form one gallery you can step through.
   // Direct upload: drag and drop or browse, several files at once. Each file is sent in its own request,
-  // so every one is checked and reported on its own and stays under the 2 MB request limit.
+  // so every one is checked and reported on its own and stays under the 10 MB request limit.
   (function () {
     var form = document.getElementById('upload-form');
     if (!form) return;
@@ -115,7 +117,7 @@
     var queue = document.getElementById('upload-queue');
     var button = document.getElementById('upload-button');
     var clearButton = document.getElementById('upload-clear');
-    var MAX = 2 * 1024 * 1024;
+    var MAX = 10 * 1024 * 1024;
     var ALLOWED = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf'];
     var files = [];
     input.multiple = true;
@@ -123,7 +125,7 @@
     function kb(n) { return Math.max(1, Math.round(n / 1024)) + ' KB'; }
     function problem(f) {
       if (ALLOWED.indexOf(f.type) === -1) return 'Not a PNG, JPG, WebP, GIF or PDF file';
-      if (f.size > MAX) return 'Larger than 2 MB';
+      if (f.size > MAX) return 'Larger than 10 MB';
       return '';
     }
     function render() {
@@ -171,10 +173,10 @@
         var body = new FormData(); body.append('file', entry.file);
         fetch('/admin/media/upload', { method: 'POST', body: body, credentials: 'same-origin' })
           .then(function (response) {
-            if (response.status === 413) throw new Error('Larger than 2 MB');
+            if (response.status === 413) throw new Error('Larger than 10 MB');
             if (!response.ok) throw new Error('Upload failed (' + response.status + ')');
             var url = new URL(response.url);
-            if (url.searchParams.get('failed')) throw new Error(({ size: 'Larger than 2 MB', type: 'File type not accepted', empty: 'Nothing was sent' })[url.searchParams.get('reason')] || 'Upload failed');
+            if (url.searchParams.get('failed')) throw new Error(({ size: 'Larger than 10 MB', type: 'File type not accepted', empty: 'Nothing was sent' })[url.searchParams.get('reason')] || 'Upload failed');
             entry.state = 'done'; uploaded++;
           })
           .catch(function (error) { entry.state = 'error'; entry.note = error.message; failed++; })

@@ -807,11 +807,11 @@ async fn feature_image_uploads_are_validated_and_need_pages_manage() {
             format!("/admin/pages/{id}/edit?error=type")
         );
         let mut big = PNG.to_vec();
-        big.resize(2 * 1024 * 1024 + 1, 0);
+        big.resize(10 * 1024 * 1024 + 1, 0);
         let large = post(&server, &path, &marketer)
             .multipart(image_form(big, "big.png", ""))
             .await;
-        // Loco caps the whole request body at 2 MB, so the stream breaks; that is reported as too large.
+        // Loco caps the whole request body at 10 MB, so the stream breaks; that is reported as too large.
         assert_eq!(
             large.header("location"),
             format!("/admin/pages/{id}/edit?error=size")
@@ -1145,7 +1145,7 @@ async fn direct_uploads_are_validated_one_file_at_a_time() {
             "/admin/media?failed=1&reason=empty"
         );
         let mut big = PNG.to_vec();
-        big.resize(2 * 1024 * 1024 + 1, 0);
+        big.resize(10 * 1024 * 1024 + 1, 0);
         let large = upload(file_form(big, "huge.png", "image/png")).await;
         assert_eq!(
             large.header("location"),
@@ -1159,7 +1159,7 @@ async fn direct_uploads_are_validated_one_file_at_a_time() {
             .await
             .text();
         assert!(
-            page.contains("1 file could not be uploaded.") && page.contains("larger than 2 MB")
+            page.contains("1 file could not be uploaded.") && page.contains("larger than 10 MB")
         );
         let page = server
             .get("/admin/media?uploaded=2&failed=1&reason=type")

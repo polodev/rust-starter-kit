@@ -66,7 +66,7 @@ cargo modular command:run roles:assign email:demo@gmail.com role:developer
 cargo modular command:run roles:revoke email:demo@gmail.com
 ```
 
-`db seed` also syncs. The admin page `/admin/roles` shows the roles and a permission matrix, and developers can change someone's role from `/admin/users` (never their own, so nobody locks themselves out).
+`db seed` also syncs. The admin area `/admin/role-permissions` has an overview, roles, permissions, a permission matrix, user assignments and backend links (the same set as Bimafy's Advanced Authorization), and developers can change someone's role and direct permissions from its User Assignments tab or someone's role from `/admin/users` (never their own, so nobody locks themselves out).
 
 ## Rules
 
