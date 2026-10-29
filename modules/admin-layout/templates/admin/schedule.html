@@ -1,0 +1,18 @@
+{% extends "layouts/admin.html" %}
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ title }}</h1>
+  <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Jobs declared by modules and in config. Run them with <code class="rounded bg-gray-100 px-1 dark:bg-gray-700">cargo modular schedule:work</code>.</p>
+</div>
+<div class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm" data-testid="schedule-table">
+      <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-900/40 dark:text-gray-400"><tr><th class="px-4 py-2">Job</th><th class="px-4 py-2">Command</th><th class="px-4 py-2">Cron (sec min hour day month weekday)</th><th class="px-4 py-2">Tags</th></tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+        {% for job in jobs %}<tr><td class="px-4 py-2 font-medium">{{ job.name }}</td><td class="px-4 py-2 font-mono text-xs">{{ job.run }}</td><td class="px-4 py-2 font-mono text-xs">{{ job.cron }}</td><td class="px-4 py-2">{% for tag in job.tags %}<span class="mr-1 rounded bg-gray-100 px-2 py-0.5 text-xs dark:bg-gray-700">{{ tag }}</span>{% endfor %}</td></tr>
+        {% else %}<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">No scheduled jobs.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock content %}

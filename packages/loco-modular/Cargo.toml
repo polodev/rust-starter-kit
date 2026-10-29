@@ -1,0 +1,17 @@
+[package]
+name = "loco-modular"
+version = "0.1.0"
+edition = "2021"
+description = "Module trait and registry for Loco applications"
+
+[dependencies]
+loco-rs = { workspace = true }
+sea-orm-migration = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+sea-orm = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml_ng = "0.10"
+tokio = { workspace = true, features = ["fs"] }
+axum = { workspace = true }

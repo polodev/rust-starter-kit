@@ -1,0 +1,15 @@
+[package]
+name = "modules-registry"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+loco-modular = { workspace = true }
+module-site-layout = { path = "../../modules/site-layout" }
+module-pages = { path = "../../modules/pages" }
+module-accounts = { path = "../../modules/accounts" }
+module-role-permission = { path = "../../modules/role-permission" }
+module-auth = { path = "../../modules/auth" }
+module-admin-layout = { path = "../../modules/admin-layout" }
+module-media = { path = "../../modules/media" }

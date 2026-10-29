@@ -1,0 +1,15 @@
+{% extends "accounts/layout.html" %}
+{% block account_content %}
+<h1 class="text-2xl font-bold text-brand-navy dark:text-white">{{ t(key="profile-title", lang=tag) }}</h1>
+<dl class="mt-4 grid gap-4 text-sm sm:grid-cols-3">
+  <div><dt class="text-slate-500 dark:text-slate-400">{{ t(key="profile-email", lang=tag) }}</dt><dd class="font-medium">{{ email }}</dd></div>
+  <div><dt class="text-slate-500 dark:text-slate-400">{{ t(key="profile-role", lang=tag) }}</dt><dd class="font-medium">{% if role %}{{ role }}{% else %}{{ t(key="profile-no-role", lang=tag) }}{% endif %}</dd></div>
+  <div><dt class="text-slate-500 dark:text-slate-400">{{ t(key="profile-member-since", lang=tag) }}</dt><dd class="font-medium">{{ joined }}</dd></div>
+</dl>
+<form method="post" action="/account/profile" class="mt-6 max-w-md space-y-4">
+  <label class="block"><span class="mb-1 block text-sm font-medium">{{ t(key="profile-name", lang=tag) }}</span>
+    <input type="text" name="name" value="{{ name }}" required maxlength="80" autocomplete="name" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/30 dark:border-gray-600 dark:bg-gray-900 dark:text-slate-100"></label>
+  <p class="text-xs text-slate-500 dark:text-slate-400">{{ t(key="profile-email-note", lang=tag) }}</p>
+  <button type="submit" class="rounded-md bg-brand-amber px-5 py-2 font-medium text-white hover:bg-amber-600">{{ t(key="profile-save", lang=tag) }}</button>
+</form>
+{% endblock account_content %}

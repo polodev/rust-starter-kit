@@ -1,0 +1,17 @@
+# build output and tools
+/target
+/tools
+
+# secrets and local state: never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+/storage
+/*.sqlite*
+
+# OS and editor files
+.DS_Store
+.idea/
+.vscode/

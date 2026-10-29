@@ -1,0 +1,67 @@
+[workspace]
+members = [".", "migration", "packages/*", "modules/*"]
+resolver = "2"
+
+[workspace.dependencies]
+loco-rs = { version = "1.2", default-features = false, features = ["auth", "cli", "with-db", "cache_inmem", "worker", "storage_aws_s3"] }
+sea-orm = { version = "2.0", default-features = false, features = ["sqlx-mysql", "runtime-tokio-rustls", "macros", "with-chrono", "with-json", "with-uuid"] }
+uuid = { version = "1.6", features = ["v4"] }
+sha2 = "0.10"
+sea-orm-migration = { version = "2.0", features = ["runtime-tokio-rustls", "sqlx-mysql"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+async-trait = "0.1"
+axum = { version = "0.8", features = ["multipart"] }
+bytes = "1"
+chrono = "0.4"
+tokio = { version = "1.45", default-features = false, features = ["rt-multi-thread"] }
+tracing = "0.1"
+loco-modular = { path = "packages/loco-modular" }
+modules-registry = { path = "packages/modules-registry" }
+
+[package]
+name = "rust-starter"
+version = "0.1.0"
+edition = "2021"
+publish = false
+default-run = "rust-starter-cli"
+
+[dependencies]
+loco-rs = { workspace = true }
+loco-modular = { workspace = true }
+modules-registry = { workspace = true }
+module-admin-layout = { path = "modules/admin-layout" }
+module-role-permission = { path = "modules/role-permission" }
+migration = { path = "migration" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+axum = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+regex = "1.11"
+sea-orm = { workspace = true }
+chrono = { workspace = true }
+validator = "0.20"
+uuid = { version = "1.6", features = ["v4"] }
+ts-rs = { version = "12", features = ["chrono-impl", "serde-compat"] }
+include_dir = "0.7"
+fluent-templates = { version = "0.15", features = ["tera"] }
+unic-langid = "0.9"
+axum-extra = { version = "0.10", features = ["form"] }
+
+[[bin]]
+name = "rust-starter-cli"
+path = "src/bin/main.rs"
+required-features = []
+
+[dev-dependencies]
+loco-rs = { workspace = true, features = ["testing"] }
+serial_test = "3.1.1"
+rstest = "0.25"
+insta = { version = "1.34", features = ["redactions", "yaml", "filters"] }
+module-pages = { path = "modules/pages" }
+module-media = { path = "modules/media" }
+axum-test = { version = "17.0.1", features = [] }
+module-auth = { path = "modules/auth" }

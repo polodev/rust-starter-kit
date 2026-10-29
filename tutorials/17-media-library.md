@@ -1,0 +1,86 @@
+# 17. Media library (`media` module)
+
+Modelled on Spatie's laravel-medialibrary (the version in Bimafy's `vendor/`). Any model can own files, grouped into **collections**, and there are two kinds of collection.
+
+| Kind | Behaviour | Example |
+|---|---|---|
+| **Single file** | Adding a file replaces the old one (the old file is deleted) | Logo, avatar, cover |
+| **Multiple files** | Keeps many files; `only_keep_latest(n)` trims the oldest | Gallery, attachments |
+
+`only_keep_latest(1)` is the same as a single-file collection, exactly as in Spatie.
+
+## Use it from a model
+
+```rust
+use module_media::{CollectionDef, HasMedia, InteractsWithMedia, Upload, IMAGES};
+
+struct Post { id: i64 }
+
+impl HasMedia for Post {
+    fn media_type(&self) -> String { "post".into() }
+    fn media_id(&self) -> i64 { self.id }
+    fn media_collections(&self) -> Vec<CollectionDef> {          // like registerMediaCollections()
+        vec![
+            CollectionDef::single("cover").accepts_mime_types(IMAGES),
+            CollectionDef::multiple("gallery").only_keep_latest(10).accepts_mime_types(IMAGES).public(),
+        ]
+    }
+}
+
+// upload an image
+post.add_media(&ctx, Upload::new("photo.png", bytes))
+    .using_name("Front photo")
+    .with_custom_properties(json!({ "alt": "A photo" }))
+    .to_media_collection("gallery")
+    .await?;
+
+let url = post.get_first_media_url(&ctx, "cover").await?;       // Some("/media/<uuid>/photo.png")
+let all = post.get_media(&ctx, "gallery").await?;
+post.clear_media_collection(&ctx, "gallery").await?;
+post.delete_media(&ctx, media_id).await?;                        // only if it belongs to this model
+```
+
+No model type handy? Use `Owner::new("user", user_id).with_collections(vec![...])`; it implements the same trait.
+
+| Spatie | Here |
+|---|---|
+| `addMedia($file)->toMediaCollection('x')` | `add_media(&ctx, upload).to_media_collection("x")` |
+| `getMedia`, `getFirstMedia`, `getLastMedia` | `get_media`, `get_first_media`, `get_last_media` |
+| `getFirstMediaUrl` | `get_first_media_url` |
+| `hasMedia`, `clearMediaCollection`, `deleteMedia` | same names, snake_case |
+| `registerMediaCollections()` | `media_collections()` |
+| `singleFile()`, `onlyKeepLatest(n)`, `acceptsMimeTypes()` | `single(..)`, `only_keep_latest(n)`, `accepts_mime_types(..)` |
+| `usingName`, `withCustomProperties`, `setOrder` | `using_name`, `with_custom_properties`, `set_order` |
+
+Not built yet (Spatie has them): image conversions and thumbnails, responsive images, adding from a URL.
+
+## Receiving an upload in a handler
+
+```rust
+async fn upload(State(ctx): State<AppContext>, Auth(user): Auth, multipart: Multipart) -> Result<Response> {
+    let file = module_media::read_upload(multipart, "logo").await;   // the form field is called "logo"
+    // ... then add_media(...).to_media_collection(...)
+}
+```
+
+Form: `<form method="post" enctype="multipart/form-data"><input type="file" name="logo">`.
+
+## What it checks for you
+
+- **Content, not name:** the type is read from the first bytes (PNG, JPEG, GIF, WebP, PDF). A PHP file called `x.png` is rejected. SVG is not accepted because it can carry scripts.
+- **Size:** each collection has `max_bytes` (default 2 MB, which is also Loco's request limit).
+- **Names:** the stored name is sanitised, and the extension follows the content type.
+- **Nothing is left behind** when a file is rejected or the database insert fails.
+
+## Where files live and who can fetch them
+
+- Files are stored through Loco's storage: `storage/uploads/` in development, in memory in tests. Point it at S3 or R2 later by changing the driver in `App::after_context`; no module code changes.
+- Rows are in the `media_files` table (`model_type`, `model_id`, `collection_name`, `name`, `file_name`, `mime_type`, `size`, `custom_properties`, `order_column`, `is_public`).
+- `GET /media/{uuid}/{file}` serves them. **Public** collections (`.public()`) go to everyone. **Private** ones (the default) go only to the owner and staff with `media.view`; everyone else gets a 404. Responses carry `nosniff` and a restrictive CSP.
+
+## Ready-made uses
+
+- **Account logo:** `/account/logo`, a single-file private collection, also shown in the header avatar.
+- **Admin library:** `/admin/media` (needs `media.view` to look, `media.manage` to upload and delete). Files are public and show a copyable address.
+
+Next: [12-cheatsheet.md](12-cheatsheet.md)

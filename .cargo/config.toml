@@ -1,0 +1,4 @@
+[alias]
+modular = "run --quiet --package cargo-modular --bin cargo-modular -- modular"
+mod = "modular"
+t = "test"

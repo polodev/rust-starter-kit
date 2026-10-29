@@ -1,0 +1,19 @@
+{% extends "accounts/layout.html" %}
+{% block account_content %}
+<h1 class="text-2xl font-bold text-brand-navy dark:text-white">{{ t(key="logo-title", lang=tag) }}</h1>
+<div class="mt-6">
+  <p class="mb-2 text-sm font-medium">{{ t(key="logo-current", lang=tag) }}</p>
+  {% if logo_url %}
+  <div class="flex items-center gap-4">
+    <img src="{{ logo_url }}" alt="{{ t(key="logo-title", lang=tag) }}" data-testid="logo-preview" class="h-24 w-24 rounded-lg border border-slate-200 bg-white object-contain p-1 dark:border-gray-700">
+    <form method="post" action="/account/logo/remove"><button type="submit" data-testid="logo-remove" class="text-sm font-medium text-red-600 hover:underline dark:text-red-400">{{ t(key="logo-remove", lang=tag) }}</button></form>
+  </div>
+  {% else %}<p class="text-sm text-slate-500 dark:text-slate-400" data-testid="logo-none">{{ t(key="logo-none", lang=tag) }}</p>{% endif %}
+</div>
+<form method="post" action="/account/logo" enctype="multipart/form-data" class="mt-6 max-w-md space-y-3">
+  <label class="block"><span class="mb-1 block text-sm font-medium">{{ t(key="logo-choose", lang=tag) }}</span>
+    <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" required class="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 dark:file:bg-gray-700"></label>
+  <p class="text-xs text-slate-500 dark:text-slate-400">{{ t(key="logo-hint", lang=tag) }}</p>
+  <button type="submit" class="rounded-md bg-brand-amber px-5 py-2 font-medium text-white hover:bg-amber-600">{{ t(key="logo-upload", lang=tag) }}</button>
+</form>
+{% endblock account_content %}

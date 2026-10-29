@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ t(key="site-name", lang=tag) }}{% endblock title %}</title>
+  {% block meta %}{% endblock meta %}
+  <script>
+    // Theme: 'light', 'dark', or unset (follow the system). Runs before paint to avoid a flash.
+    (function () {
+      var key = 'appearance';
+      var media = window.matchMedia('(prefers-color-scheme: dark)');
+      function apply(value) {
+        var dark = value === 'dark' || (value !== 'light' && media.matches);
+        document.documentElement.classList.toggle('dark', dark);
+      }
+      window.setAppearance = function (value) {
+        try {
+          if (value === 'system') { localStorage.removeItem(key); } else { localStorage.setItem(key, value); }
+        } catch (e) {}
+        apply(value);
+      };
+      var saved = null;
+      try { saved = localStorage.getItem(key); } catch (e) {}
+      apply(saved);
+      media.addEventListener('change', function () {
+        var current = null;
+        try { current = localStorage.getItem(key); } catch (e) {}
+        if (!current) { apply(null); }
+      });
+      window.addEventListener('storage', function (event) {
+        if (event.key === key) { apply(event.newValue); }
+      });
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script defer src="/static/js/alpine.min.js"></script>
+</head>
+<body class="flex min-h-screen flex-col bg-brand-cloud text-slate-800 antialiased dark:bg-page-dark dark:text-slate-200 {% if lang == "bn" %}font-bangla{% else %}font-latin{% endif %}">
+  <header x-data="{ mobileMenuOpen: false }" class="border-b border-black/20 bg-brand-navy text-white shadow-sm">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex h-16 items-center justify-between">
+        <a href="/" class="flex min-w-0 items-center truncate text-lg font-semibold text-white" data-testid="header-logo">{{ t(key="site-name", lang=tag) }}</a>
+
+        <!-- Mobile controls: language, theme, auth, menu -->
+        <div class="flex items-center space-x-2 md:hidden">
+          {% include "partials/language_switcher_compact.html" %}
+          {% include "partials/theme_toggle.html" %}
+          {% if user %}{% include "partials/user_menu.html" %}{% else %}{% include "partials/guest_links.html" %}{% endif %}
+          <button type="button" @click="mobileMenuOpen = !mobileMenuOpen" :aria-expanded="mobileMenuOpen.toString()" aria-controls="mobile-menu" aria-label="Menu" data-testid="menu-toggle"
+                  class="flex h-9 w-9 items-center justify-center rounded-md text-white focus:outline-none focus:ring-2 focus:ring-white/70">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+        </div>
+
+        <!-- Desktop navigation -->
+        <nav aria-label="Main" class="hidden items-center space-x-6 md:flex">
+        <a class="text-white/80 transition-colors hover:text-white" href="/">{{ t(key="nav-home", lang=tag) }}</a>
+        <a class="text-white/80 transition-colors hover:text-white" href="/pages/about">{{ t(key="nav-about", lang=tag) }}</a>
+        <a class="text-white/80 transition-colors hover:text-white" href="/pages/privacy-policy">{{ t(key="nav-privacy", lang=tag) }}</a>
+        <a class="text-white/80 transition-colors hover:text-white" href="/pages/terms-of-service">{{ t(key="nav-terms", lang=tag) }}</a>
+          <div class="flex items-center space-x-3 border-l border-white/30 pl-6">{% include "partials/language_switcher.html" %}</div>
+          {% include "partials/theme_toggle.html" %}
+          {% if user %}{% include "partials/user_menu.html" %}{% else %}{% include "partials/guest_links.html" %}{% endif %}
+        </nav>
+      </div>
+
+      <!-- Mobile navigation menu -->
+      <nav id="mobile-menu" aria-label="Mobile" x-show="mobileMenuOpen" x-cloak x-transition class="border-t border-white/15 py-4 md:hidden">
+        <div class="space-y-2">
+        <a class="block px-4 py-2 text-white/80 transition-colors hover:text-white" href="/">{{ t(key="nav-home", lang=tag) }}</a>
+        <a class="block px-4 py-2 text-white/80 transition-colors hover:text-white" href="/pages/about">{{ t(key="nav-about", lang=tag) }}</a>
+        <a class="block px-4 py-2 text-white/80 transition-colors hover:text-white" href="/pages/privacy-policy">{{ t(key="nav-privacy", lang=tag) }}</a>
+        <a class="block px-4 py-2 text-white/80 transition-colors hover:text-white" href="/pages/terms-of-service">{{ t(key="nav-terms", lang=tag) }}</a>
+          {% if not user %}<a href="/register" class="mx-4 mt-2 block rounded-md bg-brand-amber px-4 py-2 text-center text-sm font-medium text-white">{{ t(key="nav-register", lang=tag) }}</a>{% endif %}
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main class="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
+    {% block content %}{% endblock content %}
+  </main>
+
+  <footer class="border-t border-slate-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <div class="mx-auto max-w-5xl px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
+      &copy; {{ t(key="site-name", lang=tag) }}. {{ t(key="footer-rights", lang=tag) }}
+    </div>
+  </footer>
+</body>
+</html>

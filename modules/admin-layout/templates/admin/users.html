@@ -1,0 +1,36 @@
+{% extends "layouts/admin.html" %}
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ title }}</h1>
+  <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Everyone with an account. Only people holding the role-permission manager can change roles.</p>
+</div>
+<div class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm" data-testid="users-table">
+      <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
+        <tr><th class="px-4 py-2">Name</th><th class="px-4 py-2">Email</th><th class="px-4 py-2">Role</th><th class="px-4 py-2">Joined</th></tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+        {% for row in users %}
+        <tr>
+          <td class="px-4 py-2 font-medium">{{ row.name }}{% if row.is_you %} <span class="text-xs text-gray-400">(you)</span>{% endif %}</td>
+          <td class="px-4 py-2">{{ row.email }}</td>
+          <td class="px-4 py-2">
+            {% if can_assign and not row.is_you %}
+            <form method="post" action="/admin/users/{{ row.id }}/role" class="flex items-center gap-2">
+              <select name="role" class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-900">
+                <option value="">No role</option>
+                {% for option in role_options %}<option value="{{ option.slug }}" {% if row.role_slug == option.slug %}selected{% endif %}>{{ option.name }}</option>{% endfor %}
+              </select>
+              <button type="submit" class="rounded-md bg-brand-navy px-3 py-1 text-xs font-medium text-white hover:opacity-90">Save</button>
+            </form>
+            {% else %}{% if row.role %}{{ row.role }}{% else %}<span class="text-gray-400">None</span>{% endif %}{% endif %}
+          </td>
+          <td class="px-4 py-2">{{ row.joined }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock content %}

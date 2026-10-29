@@ -1,0 +1,18 @@
+[package]
+name = "cargo-modular"
+version = "0.1.0"
+edition = "2021"
+description = "Module scaffolding for Loco workspaces: cargo modular make:module <name>"
+
+[[bin]]
+name = "cargo-modular"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+heck = "0.5"
+toml_edit = "0.22"
+
+[dev-dependencies]
+tempfile = "3"

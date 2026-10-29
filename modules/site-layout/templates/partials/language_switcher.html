@@ -1,0 +1,22 @@
+<div x-data="{ open: false }" class="relative">
+  <button type="button" @click="open = !open" :aria-expanded="open.toString()" aria-haspopup="true"
+          class="flex items-center rounded-md px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/70">
+    <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg>
+    {% if lang == "bn" %}বাংলা{% else %}English{% endif %}
+    <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+  </button>
+  <div x-show="open" x-cloak x-transition @click.away="open = false" @keydown.escape.window="open = false"
+       class="absolute right-0 z-50 mt-2 w-44 rounded-md border border-gray-200 bg-white py-1 text-gray-700 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+    <div class="border-b border-gray-200 px-4 py-2 text-xs font-medium text-gray-500 dark:border-gray-600 dark:text-gray-400">{{ t(key="interface-language", lang=tag) }}</div>
+    <a href="/language/bn?next={{ path }}" hreflang="bn" data-testid="language-bn"
+       class="flex w-full items-center px-3 py-2 text-xs {% if lang == "bn" %}bg-gray-100 font-medium dark:bg-gray-700{% else %}hover:bg-gray-100 dark:hover:bg-gray-700{% endif %} transition-colors">
+      <span class="mr-2 flex h-4 w-4 items-center justify-center rounded-sm bg-green-100 text-[10px] font-bold text-green-800">BN</span>
+      বাংলা
+    </a>
+    <a href="/language/en?next={{ path }}" hreflang="en" data-testid="language-en"
+       class="flex w-full items-center px-3 py-2 text-xs {% if lang == "en" %}bg-gray-100 font-medium dark:bg-gray-700{% else %}hover:bg-gray-100 dark:hover:bg-gray-700{% endif %} transition-colors">
+      <span class="mr-2 flex h-4 w-4 items-center justify-center rounded-sm bg-green-100 text-[10px] font-bold text-green-800">EN</span>
+      English
+    </a>
+  </div>
+</div>

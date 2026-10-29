@@ -1,0 +1,9 @@
+{% extends "layouts/admin.html" %}
+{% block content %}
+<div class="mx-auto max-w-md rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800" data-testid="forbidden">
+  <i class="fa-solid fa-lock text-3xl text-gray-400"></i>
+  <h1 class="mt-4 text-xl font-bold">You do not have access to this page</h1>
+  <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Ask someone with the role-permission manager to give you the permission you need.</p>
+  <a href="/admin" class="mt-6 inline-block text-sm font-medium text-brand-navy underline dark:text-brand-amber">Back to the dashboard</a>
+</div>
+{% endblock content %}

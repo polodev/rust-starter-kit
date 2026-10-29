@@ -1,0 +1,724 @@
+use axum_test::multipart::{MultipartForm, Part};
+use loco_rs::{app::AppContext, testing::prelude::*, TestServer};
+use module_media::{
+    CollectionDef, HasMedia, InteractsWithMedia, MediaError, Owner, Upload, IMAGES,
+};
+use rust_starter::{
+    app::App,
+    seeders::demo_user::{self, DEMO_EMAIL, DEMO_PASSWORD},
+};
+use serial_test::serial;
+use std::path::Path;
+
+const ORIGIN: &str = "http://localhost";
+const PNG: &[u8] = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x01\0\0\0\x01";
+const JPEG: &[u8] = &[0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10, b'J', b'F', b'I', b'F'];
+
+fn png(name: &str) -> Upload {
+    Upload::new(name, PNG)
+}
+
+fn covers() -> Owner {
+    Owner::new("post", 1).with_collections(vec![
+        CollectionDef::single("cover")
+            .accepts_mime_types(IMAGES)
+            .max_bytes(64),
+        CollectionDef::multiple("gallery")
+            .only_keep_latest(2)
+            .accepts_mime_types(IMAGES),
+        CollectionDef::multiple("attachments"),
+    ])
+}
+
+async fn exists(ctx: &AppContext, path: &str) -> bool {
+    ctx.storage.exists(Path::new(path)).await.unwrap()
+}
+
+#[tokio::test]
+#[serial]
+async fn single_file_collection_replaces_the_old_file() {
+    let ctx = boot_test::<App>().await.unwrap().app_context;
+    let owner = covers();
+
+    let first = owner
+        .add_media(&ctx, png("one.png"))
+        .to_media_collection("cover")
+        .await
+        .unwrap();
+    let second = owner
+        .add_media(&ctx, png("two.png"))
+        .using_name("Second cover")
+        .to_media_collection("cover")
+        .await
+        .unwrap();
+
+    let all = owner.get_media(&ctx, "cover").await.unwrap();
+    assert_eq!(
+        all.len(),
+        1,
+        "a single-file collection keeps exactly one file"
+    );
+    assert_eq!(all[0].id, second.id);
+    assert_eq!(all[0].name, "Second cover");
+    assert!(
+        !exists(&ctx, &first.storage_path()).await,
+        "the replaced file is removed from storage"
+    );
+    assert!(exists(&ctx, &second.storage_path()).await);
+}
+
+#[tokio::test]
+#[serial]
+async fn multiple_collection_keeps_many_and_can_keep_only_the_latest_n() {
+    let ctx = boot_test::<App>().await.unwrap().app_context;
+    let owner = covers();
+
+    for index in 0..4 {
+        owner
+            .add_media(&ctx, png(&format!("file-{index}.png")))
+            .to_media_collection("attachments")
+            .await
+            .unwrap();
+    }
+    // "attachments" accepts any recognised type, so all four stay.
+    assert_eq!(owner.get_media(&ctx, "attachments").await.unwrap().len(), 4);
+
+    let mut gallery = Vec::new();
+    for index in 0..3 {
+        gallery.push(
+            owner
+                .add_media(&ctx, png(&format!("g{index}.png")))
+                .to_media_collection("gallery")
+                .await
+                .unwrap(),
+        );
+    }
+    let kept = owner.get_media(&ctx, "gallery").await.unwrap();
+    assert_eq!(kept.len(), 2, "only_keep_latest(2)");
+    assert_eq!(
+        kept.iter().map(|m| m.id).collect::<Vec<_>>(),
+        [gallery[1].id, gallery[2].id],
+        "the oldest one went"
+    );
+    assert!(!exists(&ctx, &gallery[0].storage_path()).await);
+    assert!(
+        kept[0].order_column < kept[1].order_column,
+        "files keep their order"
+    );
+}
+
+#[tokio::test]
+#[serial]
+async fn uploads_are_validated_by_content_size_and_collection_rules() {
+    let ctx = boot_test::<App>().await.unwrap().app_context;
+    let owner = covers();
+
+    let fake = owner
+        .add_media(
+            &ctx,
+            Upload::new("evil.png", &b"<?php system($_GET['c']); ?>"[..]),
+        )
+        .to_media_collection("gallery")
+        .await;
+    assert_eq!(
+        fake.unwrap_err(),
+        MediaError::UnsupportedType,
+        "the name says png, the content says no"
+    );
+
+    let pdf = owner
+        .add_media(&ctx, Upload::new("doc.pdf", &b"%PDF-1.7 test"[..]))
+        .to_media_collection("gallery")
+        .await;
+    assert_eq!(
+        pdf.unwrap_err(),
+        MediaError::UnsupportedType,
+        "gallery only accepts images"
+    );
+    assert!(owner
+        .add_media(&ctx, Upload::new("doc.pdf", &b"%PDF-1.7 test"[..]))
+        .to_media_collection("attachments")
+        .await
+        .is_ok());
+
+    let empty = owner
+        .add_media(&ctx, Upload::new("x.png", Vec::new()))
+        .to_media_collection("gallery")
+        .await;
+    assert_eq!(empty.unwrap_err(), MediaError::Empty);
+
+    let mut big = PNG.to_vec();
+    big.resize(65, 0);
+    let too_large = owner
+        .add_media(&ctx, Upload::new("big.png", big))
+        .to_media_collection("cover")
+        .await;
+    assert_eq!(
+        too_large.unwrap_err(),
+        MediaError::TooLarge { max_bytes: 64 }
+    );
+
+    assert!(
+        owner.get_media(&ctx, "cover").await.unwrap().is_empty(),
+        "rejected files leave nothing behind"
+    );
+}
+
+#[tokio::test]
+#[serial]
+async fn stored_names_follow_the_content_and_are_safe() {
+    let ctx = boot_test::<App>().await.unwrap().app_context;
+    let owner = covers();
+
+    let media = owner
+        .add_media(&ctx, Upload::new("../../My Photo (1).EXE", JPEG))
+        .with_custom_properties(serde_json::json!({ "alt": "A photo" }))
+        .to_media_collection("gallery")
+        .await
+        .unwrap();
+    assert_eq!(
+        media.file_name, "My-Photo-1.jpg",
+        "extension comes from the content, not the client"
+    );
+    assert_eq!(media.mime_type, "image/jpeg");
+    assert_eq!(media.name, "My Photo (1)");
+    assert_eq!(
+        media.custom_property("alt"),
+        Some(serde_json::json!("A photo"))
+    );
+    assert!(media.url().starts_with("/media/") && media.url().ends_with("/My-Photo-1.jpg"));
+}
+
+/// Any model can own files by implementing `HasMedia`.
+struct Post {
+    id: i64,
+}
+
+impl HasMedia for Post {
+    fn media_type(&self) -> String {
+        "post".to_string()
+    }
+    fn media_id(&self) -> i64 {
+        self.id
+    }
+    fn media_collections(&self) -> Vec<CollectionDef> {
+        vec![
+            CollectionDef::single("cover").accepts_mime_types(IMAGES),
+            CollectionDef::multiple("gallery").accepts_mime_types(IMAGES),
+        ]
+    }
+}
+
+#[tokio::test]
+#[serial]
+async fn a_model_uses_media_through_the_trait() {
+    let ctx = boot_test::<App>().await.unwrap().app_context;
+    let post = Post { id: 7 };
+    let other = Post { id: 8 };
+
+    assert!(!post.has_media(&ctx, "cover").await.unwrap());
+    post.add_media(&ctx, png("cover.png"))
+        .to_media_collection("cover")
+        .await
+        .unwrap();
+    post.add_media(&ctx, png("a.png"))
+        .to_media_collection("gallery")
+        .await
+        .unwrap();
+    let b = post
+        .add_media(&ctx, png("b.png"))
+        .to_media_collection("gallery")
+        .await
+        .unwrap();
+
+    assert!(post.has_media(&ctx, "cover").await.unwrap());
+    assert!(post
+        .get_first_media_url(&ctx, "cover")
+        .await
+        .unwrap()
+        .unwrap()
+        .starts_with("/media/"));
+    assert_eq!(
+        post.get_last_media(&ctx, "gallery")
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        b.id
+    );
+    assert!(
+        !other.has_media(&ctx, "cover").await.unwrap(),
+        "files belong to one model only"
+    );
+
+    assert!(
+        !other.delete_media(&ctx, b.id).await.unwrap(),
+        "another model cannot delete it"
+    );
+    assert!(post.delete_media(&ctx, b.id).await.unwrap());
+    assert_eq!(
+        post.clear_media_collection(&ctx, "gallery").await.unwrap(),
+        1
+    );
+    assert_eq!(
+        post.clear_media_collection(&ctx, "gallery").await.unwrap(),
+        0
+    );
+}
+
+// ---------- HTTP: accounts and the admin library ----------
+
+async fn login(server: &TestServer, email: &str, password: &str) -> String {
+    let response = server
+        .post("/login")
+        .add_header("host", "localhost")
+        .add_header("origin", ORIGIN)
+        .form(&[("email", email), ("password", password)])
+        .await;
+    assert_eq!(response.status_code(), 303);
+    response
+        .header("set-cookie")
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_string()
+}
+
+async fn user(ctx: &AppContext, email: &str, role: Option<&str>) {
+    use rust_starter::models::users::{self, RegisterParams};
+    use sea_orm::IntoActiveModel;
+    module_role_permission::sync(&ctx.db).await.unwrap();
+    let created = users::Model::create_with_password(
+        &ctx.db,
+        &RegisterParams {
+            email: email.into(),
+            password: "password123".into(),
+            name: "Test Person".into(),
+        },
+    )
+    .await
+    .unwrap();
+    let created = created.into_active_model().verified(&ctx.db).await.unwrap();
+    if let Some(role) = role {
+        module_role_permission::assign_role(&ctx.db, created.id, role)
+            .await
+            .unwrap();
+    }
+}
+
+fn post(server: &TestServer, path: &str, cookie: &str) -> axum_test::TestRequest {
+    server
+        .post(path)
+        .add_header("host", "localhost")
+        .add_header("origin", ORIGIN)
+        .add_header("cookie", cookie.to_string())
+}
+
+fn logo_form(bytes: Vec<u8>, name: &str) -> MultipartForm {
+    MultipartForm::new().add_part(
+        "logo",
+        Part::bytes(bytes).file_name(name).mime_type("image/png"),
+    )
+}
+
+#[tokio::test]
+#[serial]
+async fn account_pages_need_login_and_share_one_sub_layout() {
+    request::<App, _, _>(|server, ctx| async move {
+        for path in [
+            "/account",
+            "/account/profile",
+            "/account/password",
+            "/account/logo",
+        ] {
+            let guest = server.get(path).await;
+            assert_eq!(guest.status_code(), 303, "{path}");
+            assert!(guest
+                .header("location")
+                .to_str()
+                .unwrap()
+                .starts_with("/login?next="));
+        }
+
+        demo_user::run(&ctx.db).await.unwrap();
+        let cookie = login(&server, DEMO_EMAIL, DEMO_PASSWORD).await;
+        for (path, nav) in [
+            ("/account/profile", "profile"),
+            ("/account/password", "password"),
+            ("/account/logo", "logo"),
+        ] {
+            let html = server
+                .get(path)
+                .add_header("cookie", cookie.clone())
+                .await
+                .text();
+            assert!(
+                html.contains(r#"data-testid="account-logout""#),
+                "{path} has the logout button"
+            );
+            assert!(
+                html.contains(r#"data-testid="account-nav-profile""#)
+                    && html.contains(r#"data-testid="account-nav-password""#)
+                    && html.contains(r#"data-testid="account-nav-logo""#)
+            );
+            assert!(
+                html.contains(&format!(
+                    r#"data-testid="account-nav-{nav}" aria-current="page""#
+                )),
+                "{path} marks its own link"
+            );
+        }
+        let html = server
+            .get("/account/profile")
+            .add_header("cookie", cookie)
+            .await
+            .text();
+        assert!(
+            html.contains("Demo User") && html.contains(DEMO_EMAIL) && html.contains("Developer")
+        );
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn profile_name_can_be_changed_and_is_validated() {
+    request::<App, _, _>(|server, ctx| async move {
+        user(&ctx, "pat@example.com", None).await;
+        let cookie = login(&server, "pat@example.com", "password123").await;
+
+        let bad = post(&server, "/account/profile", &cookie)
+            .form(&[("name", "A")])
+            .await;
+        assert_eq!(bad.status_code(), 422);
+        assert!(bad.text().contains("Enter a name of 2 to 80 characters."));
+
+        let ok = post(&server, "/account/profile", &cookie)
+            .form(&[("name", "  Pat Morgan ")])
+            .await;
+        assert_eq!(ok.status_code(), 303);
+        assert_eq!(
+            ok.header("location"),
+            "/account/profile?status=profile-saved"
+        );
+        let page = server
+            .get("/account/profile?status=profile-saved")
+            .add_header("cookie", cookie.clone())
+            .await
+            .text();
+        assert!(page.contains("Pat Morgan") && page.contains("Your profile was updated."));
+
+        let foreign = server
+            .post("/account/profile")
+            .add_header("host", "localhost")
+            .add_header("origin", "https://evil.example")
+            .add_header("cookie", cookie)
+            .form(&[("name", "Hacked")])
+            .await;
+        assert_eq!(foreign.status_code(), 403);
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn changing_the_password_signs_out_other_devices() {
+    request::<App, _, _>(|server, ctx| async move {
+        user(&ctx, "sam@example.com", None).await;
+        let this_device = login(&server, "sam@example.com", "password123").await;
+        let other_device = login(&server, "sam@example.com", "password123").await;
+
+        for (current, new, confirm, message) in [
+            (
+                "wrong-password",
+                "newpassword1",
+                "newpassword1",
+                "Your current password is incorrect.",
+            ),
+            (
+                "password123",
+                "short",
+                "short",
+                "The new password must be at least 8 characters.",
+            ),
+            (
+                "password123",
+                "newpassword1",
+                "different1234",
+                "The new passwords do not match.",
+            ),
+        ] {
+            let response = post(&server, "/account/password", &this_device)
+                .form(&[
+                    ("current_password", current),
+                    ("password", new),
+                    ("password_confirmation", confirm),
+                ])
+                .await;
+            assert_eq!(response.status_code(), 422);
+            assert!(response.text().contains(message), "expected `{message}`");
+        }
+
+        let ok = post(&server, "/account/password", &this_device)
+            .form(&[
+                ("current_password", "password123"),
+                ("password", "newpassword1"),
+                ("password_confirmation", "newpassword1"),
+            ])
+            .await;
+        assert_eq!(ok.status_code(), 303);
+
+        assert_eq!(
+            server
+                .get("/account/profile")
+                .add_header("cookie", this_device)
+                .await
+                .status_code(),
+            200,
+            "this device stays signed in"
+        );
+        assert_eq!(
+            server
+                .get("/account/profile")
+                .add_header("cookie", other_device)
+                .await
+                .status_code(),
+            303,
+            "the other device is signed out"
+        );
+
+        let old = server
+            .post("/login")
+            .add_header("host", "localhost")
+            .add_header("origin", ORIGIN)
+            .form(&[("email", "sam@example.com"), ("password", "password123")])
+            .await;
+        assert_eq!(old.status_code(), 401);
+        login(&server, "sam@example.com", "newpassword1").await;
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn logo_upload_replaces_shows_in_the_header_and_stays_private() {
+    request::<App, _, _>(|server, ctx| async move {
+        user(&ctx, "lee@example.com", None).await;
+        user(&ctx, "other@example.com", None).await;
+        let cookie = login(&server, "lee@example.com", "password123").await;
+        let other = login(&server, "other@example.com", "password123").await;
+
+        assert!(server
+            .get("/account/logo")
+            .add_header("cookie", cookie.clone())
+            .await
+            .text()
+            .contains(r#"data-testid="logo-none""#));
+
+        let ok = post(&server, "/account/logo", &cookie)
+            .multipart(logo_form(PNG.to_vec(), "my logo.png"))
+            .await;
+        assert_eq!(ok.status_code(), 303, "{}", ok.text());
+        let page = server
+            .get("/account/logo?status=logo-saved")
+            .add_header("cookie", cookie.clone())
+            .await
+            .text();
+        assert!(
+            page.contains(r#"data-testid="logo-preview""#)
+                && page.contains("Your logo was updated.")
+        );
+        let url = page
+            .split(r#"data-testid="logo-preview""#)
+            .next()
+            .unwrap()
+            .rsplit(r#"src=""#)
+            .next()
+            .unwrap()
+            .split('"')
+            .next()
+            .unwrap()
+            .to_string();
+        assert!(
+            url.starts_with("/media/") && url.ends_with("/my-logo.png"),
+            "url was {url}"
+        );
+
+        let home = server
+            .get("/")
+            .add_header("cookie", cookie.clone())
+            .await
+            .text();
+        assert!(
+            home.contains(&format!(r#"src="{url}""#)),
+            "the header avatar shows the logo"
+        );
+
+        let own = server.get(&url).add_header("cookie", cookie.clone()).await;
+        own.assert_status_ok();
+        assert_eq!(own.header("content-type"), "image/png");
+        assert_eq!(own.header("x-content-type-options"), "nosniff");
+        assert_eq!(
+            server.get(&url).await.status_code(),
+            404,
+            "guests cannot fetch a private logo"
+        );
+        assert_eq!(
+            server
+                .get(&url)
+                .add_header("cookie", other)
+                .await
+                .status_code(),
+            404,
+            "neither can another user"
+        );
+
+        // A second upload replaces the first (single-file collection).
+        post(&server, "/account/logo", &cookie)
+            .multipart(logo_form(JPEG.to_vec(), "new.jpg"))
+            .await;
+        assert_eq!(
+            server
+                .get(&url)
+                .add_header("cookie", cookie.clone())
+                .await
+                .status_code(),
+            404,
+            "the old file is gone"
+        );
+
+        let removed = post(&server, "/account/logo/remove", &cookie).await;
+        assert_eq!(
+            removed.header("location"),
+            "/account/logo?status=logo-removed"
+        );
+        assert!(server
+            .get("/account/logo")
+            .add_header("cookie", cookie)
+            .await
+            .text()
+            .contains(r#"data-testid="logo-none""#));
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn logo_upload_rejects_bad_files() {
+    request::<App, _, _>(|server, ctx| async move {
+        user(&ctx, "lee@example.com", None).await;
+        let cookie = login(&server, "lee@example.com", "password123").await;
+
+        let text = post(&server, "/account/logo", &cookie)
+            .multipart(logo_form(b"just text".to_vec(), "logo.png"))
+            .await;
+        assert_eq!(text.status_code(), 422);
+        assert!(text.text().contains("Upload a PNG, JPG or WebP image."));
+
+        let mut big = PNG.to_vec();
+        big.resize(1024 * 1024 + 1, 0);
+        let large = post(&server, "/account/logo", &cookie)
+            .multipart(logo_form(big, "big.png"))
+            .await;
+        assert_eq!(large.status_code(), 422);
+        assert!(large.text().contains("The image is larger than 1 MB."));
+
+        let pdf = post(&server, "/account/logo", &cookie)
+            .multipart(
+                MultipartForm::new()
+                    .add_part("logo", Part::bytes(b"%PDF-1.7".to_vec()).file_name("a.pdf")),
+            )
+            .await;
+        assert_eq!(pdf.status_code(), 422);
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn admin_media_library_follows_media_permissions() {
+    request::<App, _, _>(|server, ctx| async move {
+        demo_user::run(&ctx.db).await.unwrap();
+        user(&ctx, "market@example.com", Some("marketing")).await; // media.view only
+        user(&ctx, "plain@example.com", None).await;
+        let dev = login(&server, DEMO_EMAIL, DEMO_PASSWORD).await;
+        let marketer = login(&server, "market@example.com", "password123").await;
+        let plain = login(&server, "plain@example.com", "password123").await;
+
+        assert_eq!(
+            server
+                .get("/admin/media")
+                .add_header("cookie", plain)
+                .await
+                .status_code(),
+            403
+        );
+
+        let viewer = server
+            .get("/admin/media")
+            .add_header("cookie", marketer.clone())
+            .await;
+        viewer.assert_status_ok();
+        assert!(
+            !viewer.text().contains(r#"data-testid="media-upload""#),
+            "view-only staff see no upload form"
+        );
+        let denied = post(&server, "/admin/media/upload", &marketer)
+            .multipart(
+                MultipartForm::new().add_part("file", Part::bytes(PNG.to_vec()).file_name("a.png")),
+            )
+            .await;
+        assert_eq!(denied.status_code(), 403);
+
+        let upload = post(&server, "/admin/media/upload", &dev)
+            .multipart(MultipartForm::new().add_part(
+                "file",
+                Part::bytes(PNG.to_vec()).file_name("Hero Banner.png"),
+            ))
+            .await;
+        assert_eq!(upload.header("location"), "/admin/media?saved=1");
+        let library = server
+            .get("/admin/media?saved=1")
+            .add_header("cookie", dev.clone())
+            .await
+            .text();
+        assert!(library.contains("Hero Banner") && library.contains("File uploaded."));
+        let url = library
+            .split(r#"value=""#)
+            .find(|part| part.starts_with("/media/"))
+            .unwrap()
+            .split('"')
+            .next()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(
+            server.get(&url).await.status_code(),
+            200,
+            "library files are public"
+        );
+
+        let bad = post(&server, "/admin/media/upload", &dev)
+            .multipart(MultipartForm::new().add_part(
+                "file",
+                Part::bytes(b"MZ-binary".to_vec()).file_name("virus.png"),
+            ))
+            .await;
+        assert_eq!(bad.header("location"), "/admin/media?error=type");
+
+        let id = library
+            .split("/admin/media/")
+            .nth(2)
+            .unwrap()
+            .split('/')
+            .next()
+            .unwrap()
+            .to_string();
+        let deleted = post(&server, &format!("/admin/media/{id}/delete"), &dev).await;
+        assert_eq!(deleted.status_code(), 303);
+        assert_eq!(server.get(&url).await.status_code(), 404);
+    })
+    .await;
+}
