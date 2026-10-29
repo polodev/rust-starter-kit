@@ -10,7 +10,7 @@ Update this file as work finishes.
 - [x] Language dropdown in eng4 style; dark/light theme toggle
 - [x] Demo user seeder `demo@gmail.com` (developer role assignment is queued below)
 - [x] Console commands, schedules, scheduler run
-- [x] Tutorials 01-13
+- [x] Tutorials 01-17 with `00-index.md` and a navigation bar on every page
 - [x] Module hooks: admin menu, apply, schedule (loco-modular)
 - [x] `role-permission` module: 6-role hierarchy new_employee < business_development < marketing < employee < admin < developer; developer holds every permission incl. the role manager; `dashboard.view` = "View admin dashboard"
 

@@ -61,6 +61,10 @@ The app, the migrator and the view engine all read `modules_registry::all()`.
 
 Demo login (development only, after `db seed`): `demo@gmail.com` / `secret123$`, a developer who can open `/admin`.
 
+## Tutorials
+
+Start at [`tutorials/00-index.md`](tutorials/00-index.md).
+
 ## Tests
 
 ```sh
