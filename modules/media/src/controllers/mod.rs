@@ -3,18 +3,26 @@ use std::path::Path as FsPath;
 use axum::{
     body::Body,
     extract::{Multipart, Path},
-    http::{header, StatusCode},
-    response::{IntoResponse, Response},
+    http::{header, HeaderMap, StatusCode},
+    response::{IntoResponse, Redirect, Response},
 };
 use bytes::Bytes;
 use loco_rs::prelude::*;
 use module_admin_layout::AdminPage;
-use module_auth::OptionalAuth;
+use module_auth::{same_origin, OptionalAuth};
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{entities::media_files, error::MediaError, upload::Upload};
+use crate::{
+    collection::{CollectionDef, DEFAULT_MAX_BYTES, DOCUMENTS},
+    entities::media_files,
+    error::MediaError,
+    has_media::{InteractsWithMedia, Owner},
+    service::delete_item,
+    upload::Upload,
+    LIBRARY_COLLECTION, LIBRARY_OWNER_ID, LIBRARY_OWNER_TYPE,
+};
 
 /// A multipart form split into its file and its plain text fields.
 #[derive(Debug, Default)]
@@ -135,11 +143,15 @@ struct LibraryQuery {
     collection: Option<String>,
     kind: Option<String>,
     page: Option<u64>,
+    /// `uploaded`, `failed` and `deleted` counters set by the redirects after a change.
+    #[serde(flatten)]
+    counts: std::collections::HashMap<String, String>,
 }
 
 /// Where the owner of a file is edited, when this app has a page for it.
 fn owner_link(model_type: &str, model_id: i64) -> Option<(String, String)> {
     match model_type {
+        LIBRARY_OWNER_TYPE => None,
         "page" => Some((
             format!("Page #{model_id}"),
             format!("/admin/pages/{model_id}/edit"),
@@ -201,20 +213,62 @@ async fn library(
         .iter()
         .map(|item| {
             let owner = owner_link(&item.model_type, item.model_id);
+            let is_library = item.model_type == LIBRARY_OWNER_TYPE;
             json!({
-                "name": item.name, "file_name": item.file_name, "owner_type": item.model_type, "url": item.url(), "mime": item.mime_type, "kb": (item.size + 1023) / 1024,
+                "name": item.name, "file_name": item.file_name, "owner_type": if is_library { "loose file, no record".to_string() } else { item.model_type.clone() }, "url": item.url(), "mime": item.mime_type, "kb": (item.size + 1023) / 1024,
                 "is_image": item.mime_type.starts_with("image/"), "collection": item.collection_name,
                 "public": item.is_public, "added": item.created_at.format("%Y-%m-%d").to_string(),
-                "owner_label": owner.as_ref().map_or_else(|| format!("{} #{}", item.model_type, item.model_id), |(label, _)| label.clone()),
+                "is_library": is_library, "id": item.id,
+                "owner_label": if is_library { "Media library".to_string() } else { owner.as_ref().map_or_else(|| format!("{} #{}", item.model_type, item.model_id), |(label, _)| label.clone()) },
                 "owner_url": owner.map(|(_, url)| url),
             })
         })
         .collect();
 
+    let count = |key: &str| {
+        query
+            .counts
+            .get(key)
+            .and_then(|value| value.parse::<u64>().ok())
+            .unwrap_or(0)
+    };
+    let (uploaded, failed) = (count("uploaded"), count("failed"));
+    let reason = match query.counts.get("reason").map(String::as_str) {
+        Some("size") => " It is larger than 2 MB.",
+        Some("type") => " Only PNG, JPG, WebP, GIF and PDF files are accepted.",
+        Some("empty") => " No file was chosen.",
+        _ => "",
+    };
+    let plural = |n: u64| if n == 1 { "" } else { "s" };
+    let message = if query.counts.contains_key("deleted") {
+        Some(("ok", "File deleted.".to_string()))
+    } else if uploaded > 0 && failed == 0 {
+        Some((
+            "ok",
+            format!("{uploaded} file{} uploaded.", plural(uploaded)),
+        ))
+    } else if uploaded > 0 {
+        Some((
+            "error",
+            format!("{uploaded} uploaded, {failed} failed.{reason}"),
+        ))
+    } else if failed > 0 {
+        Some((
+            "error",
+            format!(
+                "{failed} file{} could not be uploaded.{reason}",
+                plural(failed)
+            ),
+        ))
+    } else {
+        None
+    };
     page.render(
         &v,
         "admin/media.html",
         json!({
+            "can_manage": page.can("media.manage"),
+            "message": message.map(|(kind, text)| json!({ "kind": kind, "text": text })),
             "title": "Media library", "items": rows, "total": totals.number_of_items,
             "q": search, "collection": collection, "kind": kind, "collections": collections,
             "page": current, "pages": totals.number_of_pages.max(1),
@@ -224,8 +278,82 @@ async fn library(
     )
 }
 
+/// Files uploaded directly into the library: pictures and PDFs, public, many per owner.
+fn library_owner() -> Owner {
+    Owner::new(LIBRARY_OWNER_TYPE, LIBRARY_OWNER_ID).with_collections(vec![
+        CollectionDef::multiple(LIBRARY_COLLECTION)
+            .accepts_mime_types(DOCUMENTS)
+            .max_bytes(DEFAULT_MAX_BYTES)
+            .public(),
+    ])
+}
+
+/// Direct upload: one file per request. The page uploads several files by sending one request each,
+/// so every file is checked and reported on its own and stays within the server's body limit.
+#[debug_handler]
+async fn upload(
+    ViewEngine(v): ViewEngine<TeraView>,
+    State(ctx): State<AppContext>,
+    headers: HeaderMap,
+    page: AdminPage,
+    multipart: Multipart,
+) -> Result<Response> {
+    if !page.can("media.manage") {
+        return page.forbidden(&v);
+    }
+    if !same_origin(&headers) {
+        return Ok((StatusCode::FORBIDDEN, "request rejected").into_response());
+    }
+    let outcome = match read_form(multipart, "file").await.into_file() {
+        Ok(file) => library_owner()
+            .add_media(&ctx, file)
+            .to_media_collection(LIBRARY_COLLECTION)
+            .await
+            .map(|_| ()),
+        Err(error) => Err(error),
+    };
+    match outcome {
+        Ok(()) => Ok(Redirect::to("/admin/media?uploaded=1").into_response()),
+        Err(error) if error.is_user_error() => {
+            let reason = match error {
+                MediaError::Empty => "empty",
+                MediaError::TooLarge { .. } => "size",
+                _ => "type",
+            };
+            Ok(Redirect::to(&format!("/admin/media?failed=1&reason={reason}")).into_response())
+        }
+        Err(error) => Err(error.into()),
+    }
+}
+
+/// Deletes a loose library file. Files that belong to a record are removed on that record instead.
+#[debug_handler]
+async fn delete(
+    ViewEngine(v): ViewEngine<TeraView>,
+    State(ctx): State<AppContext>,
+    headers: HeaderMap,
+    page: AdminPage,
+    Path(id): Path<i64>,
+) -> Result<Response> {
+    if !page.can("media.manage") {
+        return page.forbidden(&v);
+    }
+    if !same_origin(&headers) {
+        return Ok((StatusCode::FORBIDDEN, "request rejected").into_response());
+    }
+    let item = media_files::Entity::find_by_id(id)
+        .filter(media_files::Column::ModelType.eq(LIBRARY_OWNER_TYPE))
+        .one(&ctx.db)
+        .await?
+        .ok_or(Error::NotFound)?;
+    delete_item(&ctx, &item).await?;
+    Ok(Redirect::to("/admin/media?deleted=1").into_response())
+}
+
 pub fn routes() -> Vec<Routes> {
     vec![Routes::new()
         .add("/media/{uuid}/{file}", get(serve))
-        .add("/admin/media", get(library))]
+        .add("/admin/media", get(library))
+        .add("/admin/media/upload", post(upload))
+        .add("/admin/media/{id}/delete", post(delete))]
 }

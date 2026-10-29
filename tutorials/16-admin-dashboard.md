@@ -35,8 +35,10 @@ Style follows eng4 (sidebar sections, quick search) with Dokani's navy top bar. 
 | `/admin/users` | `users.view` | All users with their role; developers can change roles |
 | `/admin/roles` | `roles.view` | Roles and the permission matrix; developers can sync |
 | `/admin/schedule` | `queue.view` | Scheduled jobs from modules and config |
-| `/admin/pages` | `pages.view` | Pages with their feature image; `/admin/pages/{id}/edit` to change it (`pages.manage`) |
-| `/admin/media` | `media.view` | Browse every file of every model (see tutorial 17) |
+| `/admin/pages` | `pages.view` | Pages list: click a title to open it, **Edit** to change it |
+| `/admin/pages/{id}` | `pages.view` | The page's **show page**: details, both languages as visitors see them, feature image, an **Edit** button |
+| `/admin/pages/{id}/edit` | `pages.view` to look, `pages.manage` to change | Text editor per language, feature image, hide or publish |
+| `/admin/media` | `media.view` to look, `media.manage` to upload and delete | A table of every file: thumbnails open in a lightbox, the entity links to its record; drag-and-drop upload (see tutorial 17) |
 
 A guest is sent to the login page and returned after signing in. A signed-in person without the permission sees an "Access denied" page inside the admin shell.
 

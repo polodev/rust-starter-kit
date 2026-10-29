@@ -79,6 +79,10 @@ impl Module for PagesModule {
                 "admin/page_edit.html",
                 include_str!("../templates/admin/page_edit.html"),
             ),
+            (
+                "admin/page_show.html",
+                include_str!("../templates/admin/page_show.html"),
+            ),
         ]
     }
 

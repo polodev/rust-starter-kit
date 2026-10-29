@@ -17,6 +17,10 @@ Update this file as work finishes.
 - [x] Public GitHub repo https://github.com/polodev/rust-starter-kit (secret scan clean, `.env` ignored)
 
 ## Queue (do in this order)
+0a. [x] /admin/media direct upload (no record needed): drag and drop, several files, copy link, delete loose files. Fix the one failing test
+0b. [x] "Horizontal bar" on /pages/privacy-policy: not an overflow (measured 32 cases, none). It was the staff Admin strip; replaced by a small floating "Open in admin" button
+0c. [x] Admin page content editing: add a read-only **show page** `/admin/pages/{id}`, and an editor on the edit page (title, meta description, body per language, sanitized HTML)
+0d. [x] Public "Open in admin" link goes to the admin **show page** (then Edit), not straight to the edit screen
 0. [x] Media like Laravel: files belong to models. Pages have a feature image (single-file collection) edited in `/admin/pages/{id}/edit` and shown on the public page; `/admin/media` is a table of every file: clickable thumbnails (Magnific Popup) and entity links
 1. [x] Navbar responsive, exactly like Dokani (navy bar, EN switch, theme dropdown, amber avatar, hamburger)
 2. [x] `auth` module: login, register, logout, DB sessions, CSRF origin check, login lockout (15 tests)

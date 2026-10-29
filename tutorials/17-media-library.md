@@ -121,10 +121,12 @@ impl HasMedia for pages::Model {
 }
 ```
 
-- **Edit it:** `/admin/pages/{id}/edit` (needs `pages.view` to look, `pages.manage` to change). Upload an image with alternative text, replace it, or remove it.
-- **Public page:** `/pages/about` shows the image above the title, with the alt text, and adds `og:image` for sharing.
-- **Cache:** the public page is cached for five minutes; uploading, removing, hiding or publishing clears it at once (`forget_cache`).
-- **Hide a page:** the same screen can hide or publish a page.
+- **Find it:** while signed in as staff with `pages.view`, every public page shows a small floating **Open in admin** button (bottom right, no layout space). It opens the admin **show page** (`/admin/pages/{id}`); click **Edit** there. Visitors never see it, and it is never stored in the cached page.
+- **Show page:** read-only, with both languages rendered as visitors see them and the feature image.
+- **Edit page:** `/admin/pages/{id}/edit` has a text editor with a tab per language (title, search description, body HTML), the feature image (upload with alt text, replace, remove), and hide or publish. Reading needs `pages.view`; saving needs `pages.manage`.
+- **Safe HTML:** the body is cleaned with the `ammonia` crate when saved, so scripts, event handlers and `javascript:` links never reach visitors. Headings, lists, links, images, tables and the like are kept.
+- **All or nothing:** every language is checked before anything is saved, and the form shows again with what was typed if something is wrong. A language left completely empty is skipped; visitors who choose it see English.
+- **Cache:** the public page is cached for five minutes; saving, uploading, removing, hiding or publishing clears it at once (`forget_cache`).
 
 ## The media library page
 
@@ -141,9 +143,15 @@ impl HasMedia for pages::Model {
 
 Search by name, filter by collection and type, 24 rows per page. jQuery and Magnific Popup are vendored in `assets/static/vendor/` and load only on this page.
 
-### Can a file exist without a model?
+### Direct upload (files without a record)
 
-No, and that is deliberate: every row has a `model_type` and `model_id`, the same as Spatie. To upload something that does not belong to any record yet (for example an image you want to paste into a page body), create a small owner for it, such as `Owner::new("library", 0)`. That is what the first version of this page did; one such file may still exist in your development database and shows as `library #0` with no link.
+Every row has a `model_type` and `model_id`, the same as Spatie, so a loose file belongs to a built-in owner called **`library`** (id 0). The upload box at the top of `/admin/media` (needs `media.manage`) uses it:
+
+- Drag and drop, or browse. Pick **several files**; each one is sent in its own request, so each is checked and reported separately and stays under Loco's 2 MB request limit.
+- PNG, JPG, WebP, GIF or PDF, up to 2 MB each. The content is checked, not the name.
+- Library files are **public**. Use **Copy link** to paste the address into a page's text.
+- **Delete** exists only for library files. A file that belongs to a record (like a page's feature image) is changed on that record, and the library refuses to delete it.
+- Without JavaScript the same form uploads one file at a time.
 
 To make a model show a link in the Entity column, add it to `owner_link()` in `modules/media/src/controllers/mod.rs`.
 

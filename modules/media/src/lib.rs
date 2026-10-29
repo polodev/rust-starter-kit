@@ -36,6 +36,11 @@ pub use has_media::{HasMedia, InteractsWithMedia, Owner};
 pub use service::{url_for, FileAdder};
 pub use upload::Upload;
 
+/// Loose files uploaded straight into the media library belong to this built-in owner.
+pub const LIBRARY_OWNER_TYPE: &str = "library";
+pub const LIBRARY_OWNER_ID: i64 = 0;
+pub const LIBRARY_COLLECTION: &str = "library";
+
 pub struct MediaModule;
 
 #[async_trait]

@@ -19,3 +19,4 @@ tracing = { workspace = true }
 module-admin-layout = { path = "../admin-layout" }
 module-auth = { path = "../auth" }
 module-media = { path = "../media" }
+ammonia = "4"

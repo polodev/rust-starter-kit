@@ -1,0 +1,51 @@
+{% extends "layouts/admin.html" %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-4">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <p class="text-sm"><a href="/admin/pages" class="text-brand-navy underline dark:text-brand-amber">&larr; Pages</a></p>
+      <h1 class="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100" data-testid="page-title">{{ page_title }}</h1>
+      <p class="mt-1 text-sm text-gray-500">
+        /pages/{{ item.slug }} &middot;
+        {% if item.published %}<span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Published</span>{% else %}<span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">Hidden</span>{% endif %}
+        &middot; updated {{ item.updated }}
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="/pages/{{ item.slug }}" target="_blank" rel="noopener" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">View on website <i class="fa-solid fa-arrow-up-right-from-square ml-1 text-xs"></i></a>
+      {% if can_manage %}<a href="/admin/pages/{{ item.id }}/edit" data-testid="edit-button" class="rounded-md bg-brand-navy px-4 py-1.5 text-sm font-medium text-white hover:opacity-90"><i class="fa-regular fa-pen-to-square mr-1"></i>Edit</a>{% endif %}
+    </div>
+  </div>
+
+  {% if image %}
+  <section class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Feature image</h2>
+    <img src="{{ image.url }}" alt="{{ image.alt }}" class="max-h-56 rounded-lg border border-gray-200 object-cover dark:border-gray-700">
+    <p class="mt-1 text-xs text-gray-500">{{ image.name }} &middot; {{ image.kb }} KB{% if image.alt %} &middot; alt: {{ image.alt }}{% endif %}</p>
+  </section>
+  {% endif %}
+
+  <section class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800" x-data="{ tab: '{{ languages | first | get(key="code") }}' }" data-testid="page-content">
+    <div class="flex flex-wrap gap-1 border-b border-gray-200 px-3 pt-3 dark:border-gray-700">
+      {% for language in languages %}
+      <button type="button" @click="tab = '{{ language.code }}'" :class="tab === '{{ language.code }}' ? 'border-brand-navy font-semibold text-brand-navy dark:border-brand-amber dark:text-brand-amber' : 'border-transparent text-gray-500'"
+              class="-mb-px rounded-t-md border-b-2 px-4 py-2 text-sm" data-testid="tab-{{ language.code }}">{{ language.label }}{% if not language.exists %} <span class="text-xs text-red-500">(missing)</span>{% endif %}</button>
+      {% endfor %}
+    </div>
+    {% for language in languages %}
+    <div x-show="tab === '{{ language.code }}'" {% if not loop.first %}x-cloak{% endif %} class="p-5" data-testid="content-{{ language.code }}">
+      {% if language.exists %}
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Title</p>
+      <p class="mb-3 text-lg font-semibold">{{ language.title }}</p>
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Search description</p>
+      <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">{% if language.meta %}{{ language.meta }}{% else %}<span class="text-gray-400">none</span>{% endif %}</p>
+      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Page text</p>
+      <div class="page-body rounded-lg border border-gray-100 p-4 dark:border-gray-700">{{ language.body | safe }}</div>
+      {% else %}
+      <p class="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-600">No {{ language.label }} version yet.{% if can_manage %} <a href="/admin/pages/{{ item.id }}/edit" class="font-medium text-brand-navy underline dark:text-brand-amber">Write it</a>{% endif %}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </section>
+</div>
+{% endblock content %}

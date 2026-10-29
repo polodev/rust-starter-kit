@@ -84,6 +84,4 @@ logo-missing = আগে একটি ছবি বেছে নিন।
 theme-light = লাইট
 theme-dark = ডার্ক
 theme-system = সিস্টেম
-admin-edit-page = এই পৃষ্ঠা সম্পাদনা করুন
-admin-view-page = অ্যাডমিনে দেখুন
-admin-bar-label = অ্যাডমিন
+admin-open-page = অ্যাডমিনে খুলুন

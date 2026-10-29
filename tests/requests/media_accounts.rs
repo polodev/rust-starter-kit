@@ -1032,3 +1032,313 @@ async fn admin_page_list_and_media_library_show_the_feature_image() {
     })
     .await;
 }
+
+// ---------- direct upload in the media library (files without a record) ----------
+
+fn file_form(bytes: Vec<u8>, name: &str, mime: &str) -> MultipartForm {
+    MultipartForm::new().add_part("file", Part::bytes(bytes).file_name(name).mime_type(mime))
+}
+
+fn first_library_url(html: &str) -> String {
+    html.split(r#"data-copy=""#)
+        .nth(1)
+        .expect("a copy-link button")
+        .split('"')
+        .next()
+        .unwrap()
+        .to_string()
+}
+
+#[tokio::test]
+#[serial]
+async fn the_media_library_accepts_direct_uploads_without_any_record() {
+    request::<App, _, _>(|server, ctx| async move {
+        demo_user::run(&ctx.db).await.unwrap();
+        let dev = login(&server, DEMO_EMAIL, DEMO_PASSWORD).await;
+
+        let page = server
+            .get("/admin/media")
+            .add_header("cookie", dev.clone())
+            .await
+            .text();
+        assert!(
+            page.contains(r#"data-testid="media-upload""#) && page.contains(r#"id="dropzone""#),
+            "the upload box is on the page"
+        );
+        assert!(page.contains("Drag and drop files here"));
+
+        let png = post(&server, "/admin/media/upload", &dev)
+            .multipart(file_form(PNG.to_vec(), "Team Photo.png", "image/png"))
+            .await;
+        assert_eq!(png.status_code(), 303);
+        assert_eq!(png.header("location"), "/admin/media?uploaded=1");
+        post(&server, "/admin/media/upload", &dev)
+            .multipart(file_form(
+                b"%PDF-1.7 brochure".to_vec(),
+                "brochure.pdf",
+                "application/pdf",
+            ))
+            .await;
+
+        let library = server
+            .get("/admin/media?uploaded=1")
+            .add_header("cookie", dev.clone())
+            .await
+            .text();
+        assert!(
+            library.contains("1 file uploaded."),
+            "the message says what happened"
+        );
+        assert!(library.contains("2 files"), "both files are listed");
+        assert!(
+            library.contains("Media library") && library.contains("loose file, no record"),
+            "the entity column explains there is no record"
+        );
+        assert!(library.contains("Team Photo") && library.contains("brochure"));
+        assert!(
+            library.contains(r#"data-testid="media-copy""#)
+                && library.contains(r#"data-testid="media-delete""#)
+        );
+        assert!(
+            library.contains(r#"class="media-popup"#),
+            "uploaded images open in the lightbox too"
+        );
+
+        // Library files are public, so the copied address works for anyone.
+        let url = first_library_url(&library);
+        assert!(url.starts_with("/media/"));
+        server.get(&url).await.assert_status_ok();
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn direct_uploads_are_validated_one_file_at_a_time() {
+    request::<App, _, _>(|server, ctx| async move {
+        demo_user::run(&ctx.db).await.unwrap();
+        let dev = login(&server, DEMO_EMAIL, DEMO_PASSWORD).await;
+        let upload =
+            |form: MultipartForm| post(&server, "/admin/media/upload", &dev).multipart(form);
+
+        let bad = upload(file_form(
+            b"MZ binary, not an image".to_vec(),
+            "virus.png",
+            "image/png",
+        ))
+        .await;
+        assert_eq!(
+            bad.header("location"),
+            "/admin/media?failed=1&reason=type",
+            "the content decides, not the name"
+        );
+        let svg = upload(file_form(
+            b"<svg onload=alert(1)></svg>".to_vec(),
+            "x.svg",
+            "image/svg+xml",
+        ))
+        .await;
+        assert_eq!(svg.header("location"), "/admin/media?failed=1&reason=type");
+        let none = upload(MultipartForm::new().add_text("note", "no file")).await;
+        assert_eq!(
+            none.header("location"),
+            "/admin/media?failed=1&reason=empty"
+        );
+        let mut big = PNG.to_vec();
+        big.resize(2 * 1024 * 1024 + 1, 0);
+        let large = upload(file_form(big, "huge.png", "image/png")).await;
+        assert_eq!(
+            large.header("location"),
+            "/admin/media?failed=1&reason=size"
+        );
+
+        // The page explains the failure in words.
+        let page = server
+            .get("/admin/media?failed=1&reason=size")
+            .add_header("cookie", dev.clone())
+            .await
+            .text();
+        assert!(
+            page.contains("1 file could not be uploaded.") && page.contains("larger than 2 MB")
+        );
+        let page = server
+            .get("/admin/media?uploaded=2&failed=1&reason=type")
+            .add_header("cookie", dev.clone())
+            .await
+            .text();
+        assert!(
+            page.contains("2 uploaded, 1 failed.")
+                && page.contains("Only PNG, JPG, WebP, GIF and PDF")
+        );
+
+        assert!(
+            server
+                .get("/admin/media")
+                .add_header("cookie", dev)
+                .await
+                .text()
+                .contains("0 files"),
+            "nothing bad was stored"
+        );
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn direct_upload_and_delete_need_media_manage() {
+    request::<App, _, _>(|server, ctx| async move {
+        demo_user::run(&ctx.db).await.unwrap();
+        user(&ctx, "market@example.com", Some("marketing")).await; // media.view only
+        user(&ctx, "plain@example.com", None).await;
+        let dev = login(&server, DEMO_EMAIL, DEMO_PASSWORD).await;
+        let marketer = login(&server, "market@example.com", "password123").await;
+        let plain = login(&server, "plain@example.com", "password123").await;
+        post(&server, "/admin/media/upload", &dev)
+            .multipart(file_form(PNG.to_vec(), "keep.png", "image/png"))
+            .await;
+        let id = {
+            use sea_orm::EntityTrait;
+            module_media::media_files::Entity::find()
+                .one(&ctx.db)
+                .await
+                .unwrap()
+                .unwrap()
+                .id
+        };
+
+        // View-only staff can look but get no upload box, no delete button, and their posts are refused.
+        let viewer = server
+            .get("/admin/media")
+            .add_header("cookie", marketer.clone())
+            .await;
+        viewer.assert_status_ok();
+        assert!(
+            !viewer.text().contains(r#"data-testid="media-upload""#)
+                && !viewer.text().contains(r#"data-testid="media-delete""#)
+        );
+        assert_eq!(
+            post(&server, "/admin/media/upload", &marketer)
+                .multipart(file_form(PNG.to_vec(), "no.png", "image/png"))
+                .await
+                .status_code(),
+            403
+        );
+        assert_eq!(
+            post(&server, &format!("/admin/media/{id}/delete"), &marketer)
+                .await
+                .status_code(),
+            403
+        );
+
+        // No role: no access at all. Guests are sent to log in.
+        assert_eq!(
+            server
+                .get("/admin/media")
+                .add_header("cookie", plain.clone())
+                .await
+                .status_code(),
+            403
+        );
+        assert_eq!(
+            post(&server, "/admin/media/upload", &plain)
+                .multipart(file_form(PNG.to_vec(), "no.png", "image/png"))
+                .await
+                .status_code(),
+            403
+        );
+        assert_eq!(server.get("/admin/media").await.status_code(), 303);
+
+        // Other sites cannot post uploads or deletes on a developer's behalf.
+        let foreign = server
+            .post("/admin/media/upload")
+            .add_header("host", "localhost")
+            .add_header("origin", "https://evil.example")
+            .add_header("cookie", dev.clone())
+            .multipart(file_form(PNG.to_vec(), "x.png", "image/png"))
+            .await;
+        assert_eq!(foreign.status_code(), 403);
+        let foreign = server
+            .post(&format!("/admin/media/{id}/delete"))
+            .add_header("host", "localhost")
+            .add_header("origin", "https://evil.example")
+            .add_header("cookie", dev.clone())
+            .await;
+        assert_eq!(foreign.status_code(), 403);
+
+        // The developer can delete a loose file.
+        let url = first_library_url(
+            &server
+                .get("/admin/media")
+                .add_header("cookie", dev.clone())
+                .await
+                .text(),
+        );
+        server.get(&url).await.assert_status_ok();
+        let deleted = post(&server, &format!("/admin/media/{id}/delete"), &dev).await;
+        assert_eq!(deleted.header("location"), "/admin/media?deleted=1");
+        assert_eq!(
+            server.get(&url).await.status_code(),
+            404,
+            "the file is gone from storage too"
+        );
+        assert!(server
+            .get("/admin/media?deleted=1")
+            .add_header("cookie", dev)
+            .await
+            .text()
+            .contains("File deleted."));
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn the_library_never_deletes_files_that_belong_to_a_record() {
+    request::<App, _, _>(|server, ctx| async move {
+        demo_user::run(&ctx.db).await.unwrap();
+        loco_modular::seed_all(&modules_registry::all(), &ctx)
+            .await
+            .unwrap();
+        let id = page_id(&ctx, "about").await;
+        let dev = login(&server, DEMO_EMAIL, DEMO_PASSWORD).await;
+        post(&server, &format!("/admin/pages/{id}/feature-image"), &dev)
+            .multipart(image_form(PNG.to_vec(), "owned.png", ""))
+            .await;
+
+        let owned = {
+            use sea_orm::EntityTrait;
+            module_media::media_files::Entity::find()
+                .one(&ctx.db)
+                .await
+                .unwrap()
+                .unwrap()
+        };
+        assert_eq!(owned.model_type, "page");
+
+        let library = server
+            .get("/admin/media")
+            .add_header("cookie", dev.clone())
+            .await
+            .text();
+        assert!(
+            library.contains(&format!(r#"href="/admin/pages/{id}/edit""#)),
+            "its entity is a link to the page"
+        );
+        assert!(
+            !library.contains(r#"data-testid="media-delete""#),
+            "no delete button for a file that belongs to a page"
+        );
+
+        let attempt = post(&server, &format!("/admin/media/{}/delete", owned.id), &dev).await;
+        assert_eq!(attempt.status_code(), 404);
+        server
+            .get("/pages/about")
+            .await
+            .text()
+            .contains(r#"data-testid="feature-image""#)
+            .then_some(())
+            .expect("the page still shows its image");
+    })
+    .await;
+}
