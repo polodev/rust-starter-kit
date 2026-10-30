@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 01 of 17** | [Index](00-index.md) | Previous: none | [Next: 02 Setup](02-setup.md)
+**Tutorial 1 of 21** | [Index](00-index.md) | Previous: none | [Next: 2 Setup](02-setup.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -21,6 +21,10 @@
 15. [Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)  
 16. [The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)  
 17. [Media library (`media` module)](17-media-library.md)  
+18. [JSON API and Google login](18-json-api-and-google-login.md)  
+19. [Components and the contact form](19-components-and-contact-form.md)  
+20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
+21. [Conventions](21-conventions.md)  
 
 </details>
 <!-- nav:end -->
@@ -68,9 +72,13 @@ A starter kit for building websites in Rust with the speed of working in Laravel
 
 ## What is planned
 
-Admin layout, role and permission, a versioned JSON API, login sessions, tenant URLs like Dokani, and more generators. The plan lives in `docs/rust-starter-kit-ideas.md`.
+Admin layout, role and permission, a versioned JSON API, login sessions, tenant URLs, and more generators.
+
+## Inspired by
+
+Rails and Loco (generators, convention over configuration), and Laravel and its ecosystem: `internachi/modular`, Sanctum, Socialite, Livewire/Volt, Eloquent and tinker, and Spatie's media library. The README has the full table. The names are kept where Rust allows it, so a Laravel developer can find things.
 
 <!-- foot:start -->
 ---
-[Index](00-index.md) | [Next: 02 Setup](02-setup.md)
+Previous: none | [Index](00-index.md) | [Next: 2 Setup](02-setup.md)
 <!-- foot:end -->

@@ -11,11 +11,13 @@ pub struct Model {
     pub page_id: i64,
     /// Short language code: `en` or `bn`.
     pub locale: String,
-    pub title: String,
-    pub meta_description: String,
+    /// Required for the default language (`en`, checked when saving); optional for the others.
+    /// An empty field means "use the default language's text".
+    pub title: Option<String>,
+    pub meta_description: Option<String>,
     /// Trusted HTML written by staff; rendered with `| safe`.
-    #[sea_orm(column_type = "Text")]
-    pub body_html: String,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub body_html: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

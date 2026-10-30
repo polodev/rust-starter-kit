@@ -19,6 +19,27 @@ to the exact `loco-rs` version in `Cargo.toml`:
 If your tool supports Agent Skills, it will load `SKILL.md` automatically. If
 not, read it directly — it is a normal markdown file.
 
+## This project's conventions (read before you change anything)
+
+**[`docs/CONVENTIONS.md`](docs/CONVENTIONS.md)** is the rulebook for this starter pack: how modules are laid
+out, URL and route shapes, permissions, admin screens (breadcrumb, one container width, ID as the first
+clickable column), translations, forms and "component" updates without a reload, the JSON API shape, database
+and Laravel-compatibility rules, the media library, security, tests, docs and git. It also has checklists for a
+new admin resource, public form, API endpoint and module. Follow it, and update it in the same change when you
+introduce a new convention.
+
+Other places to look:
+
+| File | What it gives you |
+|---|---|
+| `README.md` | run it, the module table, consoles (`tinker`, `tinker:eloquent`) |
+| `tutorials/` | numbered walkthroughs (start at `tutorials/00-index.md`) |
+| `modules/<name>/README.md` | what one module does, its routes and settings |
+
+Project rules that differ from a stock Loco app: features are `modules/*` crates made with `cargo modular`;
+migrations live in their module and are never edited after they ran; all visible text is a Fluent key in both
+`en-US` and `bn-BD`; the API is under `/api/v1`; run **one** `cargo test` at a time (shared test database).
+
 ## The three rules that prevent most mistakes
 
 1. **Generate, then edit.** `cargo loco generate <thing>` writes the file *and*
@@ -35,8 +56,11 @@ not, read it directly — it is a normal markdown file.
 ```sh
 cargo fmt --all
 cargo clippy --all-targets -- -D warnings
-cargo test
+cargo test --workspace
 ```
+
+Then check the list for your kind of change in `docs/CONVENTIONS.md` (new admin resource, public form, API
+endpoint, module), and update the module `README.md` and the matching tutorial.
 
 ## More
 

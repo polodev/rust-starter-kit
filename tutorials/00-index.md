@@ -22,7 +22,11 @@ Start here. Every page has an **Index** link at the top and bottom, plus Previou
 | 14 | [Login, register and sessions (`auth` module)](14-auth-and-sessions.md) | Login, register, cookie sessions and their safety checks |
 | 15 | [Roles and permissions (`role-permission` module)](15-roles-and-permissions.md) | The six-role hierarchy and how permissions are checked |
 | 16 | [The admin dashboard (`admin-layout` module)](16-admin-dashboard.md) | The admin shell, sidebar menu, navigation hub and quick search |
-| 17 | [Media library (`media` module)](17-media-library.md) | Single and multiple collections, `HasMedia`, uploads |
+| 17 | [Media library (`media` module)](17-media-library.md) | Collections, `HasMedia`, uploads, Spatie-compatible table |
+| 18 | [JSON API and Google login](18-json-api-and-google-login.md) | Bearer tokens, `ApiAuth`, sign in with Google |
+| 19 | [Components and the contact form](19-components-and-contact-form.md) | Update a form without a reload, honeypot, admin modal |
+| 20 | [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md) | SQL and Eloquent consoles, Laravel gotchas |
+| 21 | [Conventions](21-conventions.md) | The rules of this starter pack, short version |
 
 ## Pick a path
 
@@ -36,10 +40,13 @@ Start here. Every page has an **Index** link at the top and bottom, plus Previou
 | Run a task on a schedule | [13](13-console-and-schedule.md) |
 | Add login, roles or an admin page | [14](14-auth-and-sessions.md), [15](15-roles-and-permissions.md), [16](16-admin-dashboard.md) |
 | Let a model own uploaded images | [17](17-media-library.md) |
+| Build a JSON API or Google sign-in | [18](18-json-api-and-google-login.md) |
+| Add a form that updates without a reload | [19](19-components-and-contact-form.md) |
+| Change the database from a prompt, or share it with Laravel | [20](20-tinker-and-laravel-database.md) |
+| Know the rules before changing code | [21](21-conventions.md), `../docs/CONVENTIONS.md` |
 | Look something up fast | [12](12-cheatsheet.md) |
 
 ## Related files
 
 - [`../README.md`](../README.md): quick start and the list of modules
-- [`../docs/TODO.md`](../docs/TODO.md): what is done and what is next
-- [`../docs/rust-starter-kit-ideas.md`](../docs/rust-starter-kit-ideas.md): the full plan
+- [`../docs/CONVENTIONS.md`](../docs/CONVENTIONS.md): the rulebook for people and coding agents

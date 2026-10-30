@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 04 of 17** | [Index](00-index.md) | [Previous: 03 Rust essentials](03-rust-essentials.md) | [Next: 05 Modules and `cargo modular`](05-modules.md)
+**Tutorial 4 of 21** | [Index](00-index.md) | [Previous: 3 Rust essentials](03-rust-essentials.md) | [Next: 5 Modules and `cargo modular`](05-modules.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -21,6 +21,10 @@
 15. [Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)  
 16. [The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)  
 17. [Media library (`media` module)](17-media-library.md)  
+18. [JSON API and Google login](18-json-api-and-google-login.md)  
+19. [Components and the contact form](19-components-and-contact-form.md)  
+20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
+21. [Conventions](21-conventions.md)  
 
 </details>
 <!-- nav:end -->
@@ -87,5 +91,5 @@ rust-starter (app)  ──►  modules-registry  ──►  module-pages, module
 
 <!-- foot:start -->
 ---
-[Previous: 03 Rust essentials](03-rust-essentials.md) | [Index](00-index.md) | [Next: 05 Modules and `cargo modular`](05-modules.md)
+[Previous: 3 Rust essentials](03-rust-essentials.md) | [Index](00-index.md) | [Next: 5 Modules and `cargo modular`](05-modules.md)
 <!-- foot:end -->

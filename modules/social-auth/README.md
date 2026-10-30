@@ -31,5 +31,5 @@ Without `GOOGLE_CLIENT_ID` the login page hides the button and the routes answer
 | POST | `/api/v1/auth/google` | API: `{ "id_token", "device_name" }` returns `{ "user", "token" }`. |
 
 For the API, the mobile app or single page app signs in with Google itself (Google Sign-In SDK) and
-sends the ID token (`id_token`, or `access_token` as the Bimafy apps call it); its audience must be `GOOGLE_CLIENT_ID` or one of `GOOGLE_CLIENT_IDS`. The reply also carries `data` and `message` in the shape those apps read. The token is checked by
+sends the ID token (`id_token`, or `access_token` as an alias); its audience must be `GOOGLE_CLIENT_ID` or one of `GOOGLE_CLIENT_IDS`. The reply also carries `data` and `message` in the shape those apps read. The token is checked by
 Google's `tokeninfo` endpoint. The bearer token works exactly like one from `auth-api`.

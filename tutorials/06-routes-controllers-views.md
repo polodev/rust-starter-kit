@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 06 of 17** | [Index](00-index.md) | [Previous: 05 Modules and `cargo modular`](05-modules.md) | [Next: 07 Database: migrations, entities, queries, seeding](07-database.md)
+**Tutorial 6 of 21** | [Index](00-index.md) | [Previous: 5 Modules and `cargo modular`](05-modules.md) | [Next: 7 Database: migrations, entities, queries, seeding](07-database.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -21,6 +21,10 @@
 15. [Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)  
 16. [The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)  
 17. [Media library (`media` module)](17-media-library.md)  
+18. [JSON API and Google login](18-json-api-and-google-login.md)  
+19. [Components and the contact form](19-components-and-contact-form.md)  
+20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
+21. [Conventions](21-conventions.md)  
 
 </details>
 <!-- nav:end -->
@@ -109,5 +113,5 @@ The handler returns only the table fragment when the `HX-Request` header is pres
 
 <!-- foot:start -->
 ---
-[Previous: 05 Modules and `cargo modular`](05-modules.md) | [Index](00-index.md) | [Next: 07 Database: migrations, entities, queries, seeding](07-database.md)
+[Previous: 5 Modules and `cargo modular`](05-modules.md) | [Index](00-index.md) | [Next: 7 Database: migrations, entities, queries, seeding](07-database.md)
 <!-- foot:end -->

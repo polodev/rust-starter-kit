@@ -3,6 +3,56 @@
 Laravel-style starter kit on Loco (Axum), SeaORM and Tera, with MariaDB, Tailwind and HTMX.
 The site is bilingual: English and Bangla.
 
+## What is integrated
+
+Checked means built, tested and working in this repository. Unchecked is planned.
+
+**Foundation**
+- [x] Loco app (Axum, SeaORM, Tera) on MariaDB/MySQL, with a separate test database and a guard against testing the real one
+- [x] `cargo modular` generators: `make:module`, `make:command`, `modules:list`, `modules:sync`, schedule commands
+- [x] Modular monolith: every feature is a `modules/*` crate with its own routes, migrations, templates, permissions and commands
+- [x] Tailwind CSS (standalone CLI), Alpine.js, dark and light theme
+- [x] English and Bangla interface (Fluent) and bilingual database content with automatic English fallback
+- [x] Scheduler and console commands, test suite, 21 tutorials, a conventions guide for people and coding agents (`AGENTS.md`, `CLAUDE.md`, `docs/CONVENTIONS.md`)
+
+**Accounts and access**
+- [x] Register, log in, log out with database sessions, CSRF origin check and login lockout
+- [x] Six-role hierarchy and `view`/`manage` permissions defined in code, synced to the database
+- [x] Sign in with Google for the website and the API, with linked accounts
+- [x] Bearer-token JSON API under `/api/v1` with Laravel-shaped errors and an `ApiAuth` extractor
+- [x] Profile, change password and profile image for the signed-in person
+- [ ] Email verification, password reset, two-factor sign-in
+- [ ] Apple sign-in and mobile OTP login
+
+**Admin**
+- [x] Admin shell: permission-filtered sidebar, navigation hub, Ctrl/Cmd+K search, breadcrumbs, one wide container
+- [x] Users: list, show, edit (name, email, profile image) and generated password
+- [x] Roles and permissions: overview, roles, permissions, matrix, user assignments, backend links, sync
+- [x] Pages: list, show, bilingual editor (English required, Bangla optional), feature image, publish or hide
+- [x] Media library page with lightbox, direct upload, search and filters
+- [x] Contacts inbox: list, modal and a replied status
+- [x] Scheduled jobs page
+- [ ] Settings, menus and blog
+- [ ] Activity (audit) log and queue monitor
+
+**Content and files**
+- [x] Media library compatible with Spatie laravel-medialibrary: collections, `HasMedia`, same `media` table and file layout, `media:import`
+- [x] Public files redirect to a CDN or S3 URL when configured; private files are access-checked
+- [ ] Image conversions (thumbnails) and responsive images
+- [ ] Sitemap, SEO tags and `robots.txt`
+
+**Public site**
+- [x] Bilingual pages (About, Privacy Policy, Terms of Service) with a language switch
+- [x] Contact form that submits without a page reload, with a honeypot, rate limit and origin check
+- [ ] CAPTCHA option for the contact form
+
+**Developer tools**
+- [x] `tinker`: SQL console with transactions, a confirm step and read-only mode in production
+- [x] `tinker:eloquent`: Eloquent models and the `DB` facade on the same database (PHP needed)
+- [x] Database shared with a Laravel app: Spatie `media`, Argon2id passwords, binary `pid`
+- [ ] OpenAPI documentation for the API
+- [ ] Payments, tenant URLs and a project generator (`cargo modular new`)
+
 ## Run it
 
 ```sh
@@ -82,6 +132,29 @@ The app, the migrator and the view engine all read `modules_registry::all()`.
 - Long-lived: the `lang` cookie (one year) keeps the language; the `session` cookie (30 days, database-backed) keeps you logged in.
 
 Demo login (development only, after `db seed`): `demo@gmail.com` / `secret123$`, a developer who can open `/admin`.
+
+## Inspired by
+
+This starter pack borrows good ideas from established, public projects and keeps their vocabulary where Rust allows it:
+
+| Idea | From | Here |
+|---|---|---|
+| Convention over configuration, generators | Ruby on Rails, [Loco](https://loco.rs) | the framework underneath |
+| Modular monolith (`app-modules`) | [internachi/modular](https://github.com/InterNACHI/modular) (Laravel) | `modules/*` crates, `cargo modular` |
+| `artisan`, scheduler, `tinker` | Laravel | `cargo modular`, Loco tasks, `task tinker` |
+| Eloquent models and the `DB` facade | Laravel | SeaORM; real Eloquent in `task tinker:eloquent` |
+| Token API and Google sign-in | Laravel Sanctum and Socialite | `auth-api`, `social-auth` |
+| Update a form without a page load | Laravel Livewire and Volt | server-rendered "components" (`contact`) |
+| Media collections, `HasMedia` | [Spatie laravel-medialibrary](https://spatie.be/docs/laravel-medialibrary) | `media` (same table and file layout) |
+| Roles and permissions | Laravel gates and policies, Spatie permission | `role-permission` |
+| Fluent translations | Mozilla Fluent | `assets/i18n` |
+| Styling and small interactions | Tailwind CSS, Alpine.js | admin and site templates |
+
+## Conventions
+
+How modules, routes, permissions, admin screens, translations, the API, the database and tests are done in
+this project is written down in [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md). Read it before changing code;
+it is also what `AGENTS.md` and `CLAUDE.md` point coding agents to.
 
 ## Tutorials
 

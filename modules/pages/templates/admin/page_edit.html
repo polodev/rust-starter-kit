@@ -29,13 +29,13 @@
 
       {% for language in languages %}
       <div x-show="tab === '{{ language.code }}'" {% if not loop.first %}x-cloak{% endif %} class="space-y-4 p-5" data-testid="fields-{{ language.code }}">
-        <label class="block"><span class="mb-1 block text-sm font-medium">Title ({{ language.label }})</span>
+        <label class="block"><span class="mb-1 block text-sm font-medium">Title ({{ language.label }}){% if language.optional %} <span class="font-normal text-gray-500">(optional: the English title is used when this is empty)</span>{% else %} <span class="text-red-600" title="Required">*</span>{% endif %}</span>
           <input type="text" name="title_{{ language.code }}" value="{{ language.title }}" maxlength="255" lang="{{ language.code }}" data-testid="title-{{ language.code }}"
                  class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 dark:border-gray-600 dark:bg-gray-900 {% if language.code == "bn" %}font-bangla{% endif %}"></label>
         <label class="block"><span class="mb-1 block text-sm font-medium">Search description <span class="font-normal text-gray-500">(shown by search engines and when the page is shared, up to 320 characters)</span></span>
           <textarea name="meta_{{ language.code }}" rows="2" maxlength="320" lang="{{ language.code }}" data-testid="meta-{{ language.code }}"
                     class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 {% if language.code == "bn" %}font-bangla{% endif %}">{{ language.meta }}</textarea></label>
-        <label class="block"><span class="mb-1 block text-sm font-medium">Text ({{ language.label }})</span>
+        <label class="block"><span class="mb-1 block text-sm font-medium">Text ({{ language.label }}){% if language.optional %} <span class="font-normal text-gray-500">(optional: the English text is used when this is empty)</span>{% else %} <span class="text-red-600" title="Required">*</span>{% endif %}</span>
           <textarea name="body_{{ language.code }}" rows="18" lang="{{ language.code }}" spellcheck="true" data-testid="body-{{ language.code }}"
                     class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-sm leading-relaxed dark:border-gray-600 dark:bg-gray-900">{{ language.body }}</textarea></label>
         <p class="text-xs text-gray-500">HTML is allowed: headings (<code>&lt;h2&gt;</code>), paragraphs, lists, links, bold and italic, quotes, images and tables. Scripts and unsafe attributes are removed when you save.</p>

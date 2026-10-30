@@ -25,7 +25,7 @@ impl Task for ImportMedia {
     fn task(&self) -> TaskInfo {
         TaskInfo {
             name: "media:import".to_string(),
-            detail: "Copy a Laravel (Spatie) media table from another database on the same server.\nUsage: cargo run -- task media:import database:bimafy_sep24".to_string(),
+            detail: "Copy a Laravel (Spatie) media table from another database on the same server.\nUsage: cargo run -- task media:import database:legacy_app".to_string(),
         }
     }
 
@@ -59,7 +59,7 @@ mod tests {
 
     #[test]
     fn only_plain_database_names_are_accepted() {
-        assert!(valid_database_name("bimafy_sep24"));
+        assert!(valid_database_name("legacy_app_2024"));
         for bad in ["", "a b", "a`b", "x;drop", "a.b", &"x".repeat(65)] {
             assert!(!valid_database_name(bad), "{bad}");
         }

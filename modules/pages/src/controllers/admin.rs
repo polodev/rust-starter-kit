@@ -10,7 +10,7 @@ use loco_rs::prelude::*;
 use module_admin_layout::AdminPage;
 use module_auth::same_origin;
 use module_media::{read_form, InteractsWithMedia, MediaError};
-use module_site_layout::SUPPORTED_LOCALES;
+use module_site_layout::{DEFAULT_LOCALE, SUPPORTED_LOCALES};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -63,7 +63,8 @@ async fn index(
             .iter()
             .find(|t| t.locale == "en")
             .or_else(|| translations.first())
-            .map_or_else(|| item.slug.clone(), |t| t.title.clone());
+            .and_then(|t| t.title.clone())
+            .unwrap_or_else(|| item.slug.clone());
         let languages: Vec<String> = translations
             .iter()
             .map(|t| t.locale.to_uppercase())
@@ -128,11 +129,20 @@ async fn language_rows(ctx: &AppContext, page_id: i64) -> Result<Vec<Value>> {
             let found = existing
                 .iter()
                 .find(|translation| translation.locale == *code);
+            let text = |field: fn(&page_translations::Model) -> &Option<String>| {
+                found.and_then(|t| field(t).clone()).unwrap_or_default()
+            };
+            let (title, meta, body) = (
+                text(|t| &t.title),
+                text(|t| &t.meta_description),
+                text(|t| &t.body_html),
+            );
             json!({
-                "code": code, "label": language_name(code), "exists": found.is_some(),
-                "title": found.map(|t| t.title.clone()).unwrap_or_default(),
-                "meta": found.map(|t| t.meta_description.clone()).unwrap_or_default(),
-                "body": found.map(|t| t.body_html.clone()).unwrap_or_default(),
+                "code": code, "label": language_name(code),
+                // A row with every part empty counts as "no version": the default language is used.
+                "exists": !(title.is_empty() && meta.is_empty() && body.is_empty()),
+                "optional": *code != DEFAULT_LOCALE,
+                "title": title, "meta": meta, "body": body,
             })
         })
         .collect())
@@ -254,6 +264,7 @@ async fn save_content(
 
     struct Cleaned {
         code: &'static str,
+        required: bool,
         title: String,
         meta: String,
         body: String,
@@ -275,15 +286,14 @@ async fn save_content(
         let has_row = existing
             .iter()
             .any(|translation| translation.locale == code);
-        typed.push(json!({ "code": code, "label": language_name(code), "exists": has_row, "title": title, "meta": meta, "body": field("body").trim() }));
+        // The default language needs a title and text; every other language is optional and
+        // falls back to the default one for whatever is left empty.
+        let required = code == DEFAULT_LOCALE;
+        typed.push(json!({ "code": code, "label": language_name(code), "exists": has_row, "optional": !required, "title": title, "meta": meta, "body": field("body").trim() }));
 
-        // A language nobody started on is simply left out.
-        if title.is_empty() && body.is_empty() && !has_row {
-            continue;
-        }
         let name = language_name(code);
         if problem.is_none() {
-            problem = if title.is_empty() {
+            problem = if required && title.is_empty() {
                 Some(format!("{name}: the title is required."))
             } else if title.chars().count() > MAX_TITLE_CHARS {
                 Some(format!(
@@ -293,7 +303,7 @@ async fn save_content(
                 Some(format!(
                     "{name}: the description is longer than {MAX_META_CHARS} characters."
                 ))
-            } else if body.is_empty() {
+            } else if required && body.is_empty() {
                 Some(format!("{name}: the page text is required."))
             } else if body.len() > MAX_BODY_BYTES {
                 Some(format!("{name}: the page text is too long."))
@@ -303,6 +313,7 @@ async fn save_content(
         }
         cleaned.push(Cleaned {
             code,
+            required,
             title,
             meta,
             body,
@@ -323,25 +334,38 @@ async fn save_content(
         .await;
     }
 
+    // An empty part is stored as NULL, which means "use the default language".
+    let optional = |text: String| (!text.is_empty()).then_some(text);
     for entry in cleaned {
-        match existing
+        let existing_row = existing
             .iter()
-            .find(|translation| translation.locale == entry.code)
-        {
+            .find(|translation| translation.locale == entry.code);
+        let nothing_typed =
+            entry.title.is_empty() && entry.meta.is_empty() && entry.body.is_empty();
+        if !entry.required && nothing_typed {
+            // The whole language was cleared: drop its row so visitors get the default language.
+            if let Some(row) = existing_row {
+                page_translations::Entity::delete_by_id(row.id)
+                    .exec(&ctx.db)
+                    .await?;
+            }
+            continue;
+        }
+        match existing_row {
             Some(row) => {
                 let mut active: page_translations::ActiveModel = row.clone().into();
-                active.title = Set(entry.title);
-                active.meta_description = Set(entry.meta);
-                active.body_html = Set(entry.body);
+                active.title = Set(optional(entry.title));
+                active.meta_description = Set(optional(entry.meta));
+                active.body_html = Set(optional(entry.body));
                 active.update(&ctx.db).await?;
             }
             None => {
                 page_translations::ActiveModel {
                     page_id: Set(item.id),
                     locale: Set(entry.code.to_string()),
-                    title: Set(entry.title),
-                    meta_description: Set(entry.meta),
-                    body_html: Set(entry.body),
+                    title: Set(optional(entry.title)),
+                    meta_description: Set(optional(entry.meta)),
+                    body_html: Set(optional(entry.body)),
                     ..Default::default()
                 }
                 .insert(&ctx.db)

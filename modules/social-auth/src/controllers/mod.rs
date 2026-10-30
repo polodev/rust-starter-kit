@@ -146,7 +146,7 @@ async fn api_google(State(ctx): State<AppContext>, body: Bytes) -> Result<Respon
             .filter(|value| !value.is_empty())
             .map(str::to_string)
     };
-    // `access_token` is the name the Bimafy mobile apps use for the same Google ID token.
+    // `access_token` is accepted as an alias for the same Google ID token, which some mobile clients send under that name.
     let Some(id_token) = text("id_token").or_else(|| text("access_token")) else {
         let mut errors = module_auth_api::ValidationErrors::default();
         errors.add("id_token", "The id token field is required.");
@@ -178,7 +178,7 @@ async fn api_google(State(ctx): State<AppContext>, body: Bytes) -> Result<Respon
     let (token, _) = module_auth_api::create_api_token(&ctx.db, user.id, &device, None).await?;
     Ok((
         StatusCode::OK,
-        // `data` and `message` repeat the same values for clients written against the Bimafy apps.
+        // `data` and `message` repeat the same values for existing mobile clients that read them.
         axum::Json(json!({
             "user": user_json(&user), "token": token,
             "data": { "token": token, "user": user_json(&user) },

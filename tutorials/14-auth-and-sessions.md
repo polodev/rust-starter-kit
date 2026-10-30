@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 14 of 17** | [Index](00-index.md) | [Previous: 13 Console commands and the scheduler](13-console-and-schedule.md) | [Next: 15 Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)
+**Tutorial 14 of 21** | [Index](00-index.md) | [Previous: 13 Console commands and the scheduler](13-console-and-schedule.md) | [Next: 15 Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -21,6 +21,10 @@
 15. [Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)  
 16. [The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)  
 17. [Media library (`media` module)](17-media-library.md)  
+18. [JSON API and Google login](18-json-api-and-google-login.md)  
+19. [Components and the contact form](19-components-and-contact-form.md)  
+20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
+21. [Conventions](21-conventions.md)  
 
 </details>
 <!-- nav:end -->
@@ -36,8 +40,9 @@ The `auth` module owns everything about who you are: login, register, logout, th
 | `GET/POST /register` | Create an account. Sign-up signs you in. New accounts have **no role**. |
 | `GET/POST /login` | Sign in. Accepts `?next=/some/page` and returns there afterwards. |
 | `POST /logout` | Ends this session and clears the cookie. |
+| `GET /auth/google/redirect` | Sign in with Google (shown on the login page when `GOOGLE_CLIENT_ID` is set; see [tutorial 18](18-json-api-and-google-login.md)). |
 
-The header follows Dokani: guests see **Log in** (amber link) and **Register** (button); signed-in people see an avatar with a menu (Admin dashboard if they hold `dashboard.view`, My account, Log out).
+The header: guests see **Log in** (amber link) and **Register** (button); signed-in people see an avatar with a menu (Admin dashboard if they hold `dashboard.view`, My account, Log out).
 
 ## How a session works
 

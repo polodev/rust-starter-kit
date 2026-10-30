@@ -15,3 +15,6 @@
 .DS_Store
 .idea/
 .vscode/
+
+# private planning notes (they refer to other local projects); keep them out of the public repo
+/docs/internal/

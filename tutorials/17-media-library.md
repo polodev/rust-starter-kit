@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 17 of 17** | [Index](00-index.md) | [Previous: 16 The admin dashboard (`admin-layout` module)](16-admin-dashboard.md) | Next: none
+**Tutorial 17 of 21** | [Index](00-index.md) | [Previous: 16 The admin dashboard (`admin-layout` module)](16-admin-dashboard.md) | [Next: 18 JSON API and Google login](18-json-api-and-google-login.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -21,32 +21,32 @@
 15. [Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)  
 16. [The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)  
 **17. [Media library (`media` module)](17-media-library.md)**  
+18. [JSON API and Google login](18-json-api-and-google-login.md)  
+19. [Components and the contact form](19-components-and-contact-form.md)  
+20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
+21. [Conventions](21-conventions.md)  
 
 </details>
 <!-- nav:end -->
 
 # 17. Media library (`media` module)
 
-Modelled on Spatie's laravel-medialibrary (the version in Bimafy's `vendor/`). Any model can own files, grouped into **collections**, and there are two kinds of collection.
+Modelled on Spatie laravel-medialibrary, and it uses Spatie's own `media` table and `{id}/{file_name}` file layout, so a Laravel app can share the database and the bucket. Any model can own files grouped into **collections**.
 
 | Kind | Behaviour | Example |
 |---|---|---|
-| **Single file** | Adding a file replaces the old one (the old file is deleted) | Logo, avatar, cover |
-| **Multiple files** | Keeps many files; `only_keep_latest(n)` trims the oldest | Gallery, attachments |
-
-`only_keep_latest(1)` is the same as a single-file collection, exactly as in Spatie.
+| **Single file** | Adding a file replaces the old one | Logo, avatar, feature image |
+| **Multiple files** | Keeps many; `only_keep_latest(n)` trims the oldest | Gallery, attachments |
 
 ## Use it from a model
 
 ```rust
 use module_media::{CollectionDef, HasMedia, InteractsWithMedia, Upload, IMAGES};
 
-struct Post { id: i64 }
-
 impl HasMedia for Post {
-    fn media_type(&self) -> String { "post".into() }
+    fn media_type(&self) -> String { "post".into() }       // stored in model_type
     fn media_id(&self) -> i64 { self.id }
-    fn media_collections(&self) -> Vec<CollectionDef> {          // like registerMediaCollections()
+    fn media_collections(&self) -> Vec<CollectionDef> {    // registerMediaCollections()
         vec![
             CollectionDef::single("cover").accepts_mime_types(IMAGES),
             CollectionDef::multiple("gallery").only_keep_latest(10).accepts_mime_types(IMAGES).public(),
@@ -54,139 +54,55 @@ impl HasMedia for Post {
     }
 }
 
-// upload an image
 post.add_media(&ctx, Upload::new("photo.png", bytes))
     .using_name("Front photo")
     .with_custom_properties(json!({ "alt": "A photo" }))
-    .to_media_collection("gallery")
-    .await?;
+    .to_media_collection("gallery").await?;
 
-let url = post.get_first_media_url(&ctx, "cover").await?;       // Some("/media/<uuid>/photo.png")
-let all = post.get_media(&ctx, "gallery").await?;
+let url = post.get_first_media_url(&ctx, "cover").await?;   // Some("/media/12/photo.png")
 post.clear_media_collection(&ctx, "gallery").await?;
-post.delete_media(&ctx, media_id).await?;                        // only if it belongs to this model
 ```
 
-No model type handy? Use `Owner::new("user", user_id).with_collections(vec![...])`; it implements the same trait.
+No model type handy? `Owner::new("user", id).with_collections(vec![...])` implements the same trait. Method names are Spatie's in snake_case (`get_media`, `get_first_media`, `delete_media`, `using_name`, `set_order`).
 
-| Spatie | Here |
-|---|---|
-| `addMedia($file)->toMediaCollection('x')` | `add_media(&ctx, upload).to_media_collection("x")` |
-| `getMedia`, `getFirstMedia`, `getLastMedia` | `get_media`, `get_first_media`, `get_last_media` |
-| `getFirstMediaUrl` | `get_first_media_url` |
-| `hasMedia`, `clearMediaCollection`, `deleteMedia` | same names, snake_case |
-| `registerMediaCollections()` | `media_collections()` |
-| `singleFile()`, `onlyKeepLatest(n)`, `acceptsMimeTypes()` | `single(..)`, `only_keep_latest(n)`, `accepts_mime_types(..)` |
-| `usingName`, `withCustomProperties`, `setOrder` | `using_name`, `with_custom_properties`, `set_order` |
+In a handler: `let form = module_media::read_form(multipart, "image").await; let file = form.into_file()?;` then `add_media(...)`.
 
-Not built yet (Spatie has them): image conversions and thumbnails, responsive images, adding from a URL.
+## What it checks
 
-## Receiving an upload in a handler
-
-```rust
-async fn upload(State(ctx): State<AppContext>, Auth(user): Auth, multipart: Multipart) -> Result<Response> {
-    let file = module_media::read_upload(multipart, "logo").await;   // the form field is called "logo"
-    // ... then add_media(...).to_media_collection(...)
-}
-```
-
-Form: `<form method="post" enctype="multipart/form-data"><input type="file" name="logo">`.
-
-## What it checks for you
-
-- **Content, not name:** the type is read from the first bytes (PNG, JPEG, GIF, WebP, PDF). A PHP file called `x.png` is rejected. SVG is not accepted because it can carry scripts.
-- **Size:** each collection has `max_bytes` (default 10 MB, which is also Loco's request limit).
-- **Names:** the stored name is sanitised, and the extension follows the content type.
-- **Nothing is left behind** when a file is rejected or the database insert fails.
+- **Content, not name:** PNG, JPEG, GIF, WebP and PDF are recognised from the first bytes. SVG is refused (it can carry scripts).
+- **Size:** `max_bytes` per collection (default 10 MB). The request limit is `limit_payload` in `config/*.yaml` (11 MB); raise both together, and your proxy's limit too.
+- **Names:** sanitised, with the extension following the content type. Nothing is left behind when a file is rejected.
 
 ## Where files live and who can fetch them
 
-- Files are stored through Loco's storage: `storage/uploads/` in development, in memory in tests. Point it at S3 or R2 later by changing the driver in `App::after_context`; no module code changes.
-- Rows are in the `media` table, which is Spatie laravel-medialibrary's own table (`model_type`, `model_id`, `uuid`, `collection_name`, `name`, `file_name`, `mime_type`, `disk`, `conversions_disk`, `size`, `manipulations`, `custom_properties`, `generated_conversions`, `responsive_images`, `order_column`, timestamps). A Laravel app can use the same table.
-- `GET /media/{uuid}/{file}` serves them. **Public** collections (`.public()`) go to everyone. **Private** ones (the default) go only to the owner and staff with `media.view`; everyone else gets a 404. Responses carry `nosniff` and a restrictive CSP.
-
-## A worked example: the page feature image
-
-Pages use the library exactly like any model would (`modules/pages/src/lib.rs`):
-
-```rust
-pub const fn feature_image_collection() -> CollectionDef {
-    CollectionDef::single("feature_image").accepts_mime_types(IMAGES).max_bytes(DEFAULT_MAX_BYTES).public()
-}
-
-impl HasMedia for pages::Model {
-    fn media_type(&self) -> String { "page".into() }
-    fn media_id(&self) -> i64 { self.id }
-    fn media_collections(&self) -> Vec<CollectionDef> { vec![feature_image_collection()] }
-}
-```
-
-- **Find it:** while signed in as staff with `pages.view`, every public page shows a small floating **Open in admin** button (bottom right, no layout space). It opens the admin **show page** (`/admin/pages/{id}`); click **Edit** there. Visitors never see it, and it is never stored in the cached page.
-- **Show page:** read-only, with both languages rendered as visitors see them and the feature image.
-- **Edit page:** `/admin/pages/{id}/edit` has a text editor with a tab per language (title, search description, body HTML), the feature image (upload with alt text, replace, remove), and hide or publish. Reading needs `pages.view`; saving needs `pages.manage`.
-- **Safe HTML:** the body is cleaned with the `ammonia` crate when saved, so scripts, event handlers and `javascript:` links never reach visitors. Headings, lists, links, images, tables and the like are kept.
-- **All or nothing:** every language is checked before anything is saved, and the form shows again with what was typed if something is wrong. A language left completely empty is skipped; visitors who choose it see English.
-- **Cache:** the public page is cached for five minutes; saving, uploading, removing, hiding or publishing clears it at once (`forget_cache`).
-
-## The media library page
-
-`/admin/media` (needs `media.view`) is a **table of every file of every model**, not a place to upload loose files. That matches Laravel's media library, where a file always belongs to a model.
-
-| Column | What it shows |
-|---|---|
-| Preview | A thumbnail. **Click it** to open the image in a Magnific Popup lightbox; the images on the page form one gallery you can step through. PDFs open in a new tab. |
-| Name | The display name and stored file name |
-| Entity | The model that owns the file, for example **Page #3**. **Click it** to open that record's edit screen, where you change the file. |
-| Collection, Type, Size | `feature_image`, `image/png`, 35 KB |
-| Access | Public or private |
-| Added | Date |
-
-Search by name, filter by collection and type, 24 rows per page. jQuery and Magnific Popup are vendored in `assets/static/vendor/` and load only on this page.
-
-### Direct upload (files without a record)
-
-Every row has a `model_type` and `model_id`, the same as Spatie, so a loose file belongs to a built-in owner called **`library`** (id 0). The upload box at the top of `/admin/media` (needs `media.manage`) uses it:
-
-- Drag and drop, or browse. Pick **several files**; each one is sent in its own request, so each is checked and reported separately and stays under Loco's 10 MB request limit.
-- PNG, JPG, WebP, GIF or PDF, up to 10 MB each. The content is checked, not the name.
-- Library files are **public**. Use **Copy link** to paste the address into a page's text.
-- **Delete** exists only for library files. A file that belongs to a record (like a page's feature image) is changed on that record, and the library refuses to delete it.
-- Without JavaScript the same form uploads one file at a time.
-
-To make a model show a link in the Entity column, add it to `owner_link()` in `modules/media/src/controllers/mod.rs`.
-
-## Receiving uploads in your own handler
-
-```rust
-let form = module_media::read_form(multipart, "image").await;   // file + the other text fields
-let alt = form.fields.get("alt").cloned().unwrap_or_default();
-let file = form.into_file()?;                                    // Err(Empty) or Err(TooLarge) explains why
-```
-
-Loco limits a request body to 10 MB (set by `limit_payload` in `config/*.yaml`). A bigger upload breaks the stream, and `into_file` reports that as `TooLarge` so the visitor sees "too large", not "nothing chosen".
-
-<!-- foot:start -->
----
-[Previous: 16 The admin dashboard (`admin-layout` module)](16-admin-dashboard.md) | [Index](00-index.md)
-<!-- foot:end -->
-
-
-## Sharing the database with a Laravel (Spatie) app
-
-The media module uses Spatie's table and file layout, so you can move a Laravel project over without converting its media.
-
-- **File layout:** a file lives at `{id}/{file_name}` on the storage disk (with `settings.media.prefix` in front when set), the same as Spatie's `DefaultPathGenerator`. Point Loco's `storage` at the same bucket and existing files are found where Laravel left them.
-- **Owners:** `Owner::new("enrollment", 77)` matches rows whose `model_type` is `enrollment` and `model_id` is `77`. Use the same alias (or full class name) Laravel stores. `model_id` is text, so uuid keys are fine; only numeric keys can be read through `owner_id()`.
-- **Import:** `cargo run -- task media:import database:bimafy_sep24` copies another database's `media` table on the same server into this one, keeping ids. It can be run again; rows already present are skipped. If both apps use one database there is nothing to import.
-- **Public or private:** an imported file is private (only its owner and staff with `media.view` can open it) until it has `"public": true` in `custom_properties`. Collections declared `.public()` set that on new files. The `disk` column keeps Laravel's name (for example `s3-media`); new rows get `settings.media.disk`.
-- **CDN:** set `settings.media.disk_urls.<disk>` and public files at `/media/{id}/{file}` redirect to `{url}/{path}`, so their bytes do not pass through this app.
-- **Not covered:** image conversions and responsive images. Their columns are kept and written as `[]`.
+- **Storage:** Loco's storage (`storage/uploads/` in development; S3 or R2 by config). A file is at `{id}/{file_name}`, with `settings.media.prefix` in front when set.
+- **Table:** `media` with Spatie's columns (`model_type`, `model_id` as text, `uuid`, `collection_name`, `disk`, `size`, `custom_properties`, ...).
+- **URL:** `GET /media/{id}/{file_name}`. **Public** collections (`.public()`) go to everyone; the default is **private**: only the owner and staff with `media.view`, everyone else gets 404.
+- **CDN:** set `settings.media.disk_urls.<disk>` and public files redirect to `{url}/{path}` so the bytes skip this app.
 
 ```yaml
 settings:
   media:
-    disk: s3-media
+    disk: s3-media        # written to new rows
     prefix: ""
     disk_urls:
       s3-media: https://cdn.example.com
 ```
+
+## Admin
+
+- **`/admin/media`** (needs `media.view`): every file of every model, searchable and filterable. ID links to the file; thumbnails open in a lightbox; the entity links to its record.
+- **Direct upload** (needs `media.manage`): drag and drop several files; each is sent in its own request and checked on its own. Loose files belong to the built-in owner `library` (id 0), are public, and can be deleted here. A file that belongs to a record is changed on that record.
+- **Examples:** a page's feature image (`modules/pages`) and a user's profile image (`logo` collection, edited on `/admin/users/{id}/edit` and `/account/logo`).
+
+## Sharing the database with Laravel
+
+- **Owners:** use the exact `model_type` Laravel stores (`Owner::new("enrollment", 77)`). Uuid keys are readable too; only numeric keys give an `owner_id()`.
+- **Import:** `cargo run -- task media:import database:legacy_app` copies another database's `media` table, keeping ids; run it again to pick up new rows. If both apps use one database there is nothing to import.
+- **Imported files are private** until `custom_properties` has `"public": true`.
+- **Not built:** image conversions and thumbnails, responsive images, adding from a URL. Their columns are kept and written as `[]`.
+
+<!-- foot:start -->
+---
+[Previous: 16 The admin dashboard (`admin-layout` module)](16-admin-dashboard.md) | [Index](00-index.md) | [Next: 18 JSON API and Google login](18-json-api-and-google-login.md)
+<!-- foot:end -->

@@ -29,20 +29,20 @@
     <div class="flex flex-wrap gap-1 border-b border-gray-200 px-3 pt-3 dark:border-gray-700">
       {% for language in languages %}
       <button type="button" @click="tab = '{{ language.code }}'" :class="tab === '{{ language.code }}' ? 'border-brand-navy font-semibold text-brand-navy dark:border-brand-amber dark:text-brand-amber' : 'border-transparent text-gray-500'"
-              class="-mb-px rounded-t-md border-b-2 px-4 py-2 text-sm" data-testid="tab-{{ language.code }}">{{ language.label }}{% if not language.exists %} <span class="text-xs text-red-500">(missing)</span>{% endif %}</button>
+              class="-mb-px rounded-t-md border-b-2 px-4 py-2 text-sm" data-testid="tab-{{ language.code }}">{{ language.label }}{% if not language.exists %}{% if language.optional %} <span class="text-xs text-gray-400">(uses English)</span>{% else %} <span class="text-xs text-red-500">(missing)</span>{% endif %}{% endif %}</button>
       {% endfor %}
     </div>
     {% for language in languages %}
     <div x-show="tab === '{{ language.code }}'" {% if not loop.first %}x-cloak{% endif %} class="p-5" data-testid="content-{{ language.code }}">
       {% if language.exists %}
       <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Title</p>
-      <p class="mb-3 text-lg font-semibold">{{ language.title }}</p>
+      <p class="mb-3 text-lg font-semibold">{% if language.title %}{{ language.title }}{% else %}<span class="text-sm font-normal text-gray-400">(the English title is used)</span>{% endif %}</p>
       <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Search description</p>
-      <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">{% if language.meta %}{{ language.meta }}{% else %}<span class="text-gray-400">none</span>{% endif %}</p>
+      <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">{% if language.meta %}{{ language.meta }}{% elif language.optional %}<span class="text-gray-400">(the English description is used)</span>{% else %}<span class="text-gray-400">none</span>{% endif %}</p>
       <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Page text</p>
-      <div class="page-body rounded-lg border border-gray-100 p-4 dark:border-gray-700">{{ language.body | safe }}</div>
+      {% if language.body %}<div class="page-body rounded-lg border border-gray-100 p-4 dark:border-gray-700">{{ language.body | safe }}</div>{% else %}<p class="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-400 dark:border-gray-600">The English text is used.</p>{% endif %}
       {% else %}
-      <p class="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-600">No {{ language.label }} version yet.{% if can_manage %} <a href="/admin/pages/{{ item.id }}/edit" class="font-medium text-brand-navy underline dark:text-brand-amber">Write it</a>{% endif %}</p>
+      <p class="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-600">{% if language.optional %}No {{ language.label }} version: visitors see the English text.{% else %}No {{ language.label }} version yet.{% endif %}{% if can_manage %} <a href="/admin/pages/{{ item.id }}/edit" class="font-medium text-brand-navy underline dark:text-brand-amber">Write it</a>{% endif %}</p>
       {% endif %}
     </div>
     {% endfor %}

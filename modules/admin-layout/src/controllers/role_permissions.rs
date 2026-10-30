@@ -1,4 +1,4 @@
-//! The role and permission screens, laid out like Bimafy's "Advanced Authorization": an overview,
+//! The role and permission screens: an overview,
 //! roles (with a page per role), permissions, the permission matrix, user assignments (with search
 //! and an edit page) and backend links, all under `/admin/role-permissions`.
 //! Roles and permissions themselves are defined in code and copied into the database by "Sync".

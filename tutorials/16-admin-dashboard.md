@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 16 of 17** | [Index](00-index.md) | [Previous: 15 Roles and permissions (`role-permission` module)](15-roles-and-permissions.md) | [Next: 17 Media library (`media` module)](17-media-library.md)
+**Tutorial 16 of 21** | [Index](00-index.md) | [Previous: 15 Roles and permissions (`role-permission` module)](15-roles-and-permissions.md) | [Next: 17 Media library (`media` module)](17-media-library.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -21,76 +21,69 @@
 15. [Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)  
 **16. [The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)**  
 17. [Media library (`media` module)](17-media-library.md)  
+18. [JSON API and Google login](18-json-api-and-google-login.md)  
+19. [Components and the contact form](19-components-and-contact-form.md)  
+20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
+21. [Conventions](21-conventions.md)  
 
 </details>
 <!-- nav:end -->
 
 # 16. The admin dashboard (`admin-layout` module)
 
-Style follows eng4 (sidebar sections, quick search) with Dokani's navy top bar. The admin is English only and not indexed by search engines.
+Sidebar sections, quick search and a navy top bar. The admin is English only and not indexed.
 
 | URL | Needs | Shows |
 |---|---|---|
-| `/admin` | `dashboard.view` | Stat cards and the newest users |
-| `/admin/users` | `users.view` | All users with their role; developers can change roles |
-| `/admin/role-permissions` | `roles.view` | Overview, roles, permissions, matrix, user assignments, backend links; developers can sync and assign |
-| `/admin/schedule` | `queue.view` | Scheduled jobs from modules and config |
-| `/admin/pages` | `pages.view` | Pages list: click a title to open it, **Edit** to change it |
-| `/admin/pages/{id}` | `pages.view` | The page's **show page**: details, both languages as visitors see them, feature image, an **Edit** button |
-| `/admin/pages/{id}/edit` | `pages.view` to look, `pages.manage` to change | Text editor per language, feature image, hide or publish |
-| `/admin/media` | `media.view` to look, `media.manage` to upload and delete | A table of every file: thumbnails open in a lightbox, the entity links to its record; drag-and-drop upload (see tutorial 17) |
+| `/admin` | `dashboard.view` | Navigation hub: every link you may use, with search |
+| `/admin/users`, `/{id}`, `/{id}/edit` | `users.view` / `users.manage` | List, read-only show, edit (name, email, profile image, generate password) |
+| `/admin/role-permissions/...` | `roles.view` | Overview, roles, permissions, matrix, user assignments, backend links (tutorial 15) |
+| `/admin/pages`, `/{id}`, `/{id}/edit` | `pages.view` / `pages.manage` | Pages: list, show, text editor per language, feature image |
+| `/admin/media` | `media.view` / `media.manage` | Every file, direct upload (tutorial 17) |
+| `/admin/contacts` | `contacts.view` / `contacts.manage` | Inbox with a modal and a replied status (tutorial 19) |
+| `/admin/schedule` | `queue.view` | Scheduled jobs |
 
-A guest is sent to the login page and returned after signing in. A signed-in person without the permission sees an "Access denied" page inside the admin shell.
+A guest is sent to login and returned afterwards. Someone without the permission sees "Access denied" inside the shell.
 
-## Finding things easily
+## How every admin page looks
 
-- **The dashboard itself is a navigation hub** (like eng4). `/admin` opens on "All navigation links": a count of sections and links, a search box and every sidebar link as a small icon chip, grouped by section. It is built from the same menu as the sidebar, so it can never drift, and it only lists what you may use.
-- The sidebar has sections (**Overview**, **Content**, **People and access**, **System**) and only shows links the person may use.
-- The current page is highlighted.
-- **Ctrl/Cmd + K** (or the "Find a page" button) opens a search over every sidebar item. Type, press Enter to open the first match.
+- **One container:** the layout wraps every page in one wide container. Do not add your own `max-w-*`.
+- **Breadcrumb:** `Dashboard › Users › Demo User › Edit`, set in `{% block breadcrumb %}`. If you do not override it the layout shows `Dashboard › {{ title }}`. No "back" links.
+- **Lists:** the first column is **ID** and links to the show page. A right-aligned Actions column has **Show** and, if permitted, **Edit**.
+- **Show** is read-only with an Edit button; **Edit** is its own page. Saving redirects with `?saved=...`, errors with `?error=...`.
+- **Finding things:** the sidebar shows only what you may use; **Ctrl/Cmd + K** searches every item.
 
-## Adding your page to the sidebar
+## Add your page
 
-Each module contributes its own links. In your module:
+In your module, add a sidebar link:
 
 ```rust
 fn admin_menu(&self) -> Vec<MenuItem> {
     vec![MenuItem {
-        section: "Content",
-        label: "Pages",
-        href: "/admin/pages",
-        permission: "pages.view",      // people without it never see the link
-        icon: "fa-regular fa-file-lines",
-        order: 1,
-        match_children: true,
+        section: "Content", label: "Pages", href: "/admin/pages",
+        permission: "pages.view",              // without it the link is hidden
+        icon: "fa-regular fa-file-lines", order: 1, match_children: true,
     }]
 }
 ```
 
-The app collects the menus of all modules (`loco_modular::collect_menu`) and the layout filters them per person. No template edit needed.
-
-## Writing an admin page
+Then a handler and a template:
 
 ```rust
-use module_admin_layout::AdminPage;
-
 #[debug_handler]
 async fn index(ViewEngine(v): ViewEngine<TeraView>, page: AdminPage) -> Result<Response> {
-    if !page.can("pages.view") {
-        return page.forbidden(&v);
-    }
+    if !page.can("pages.view") { return page.forbidden(&v); }
     page.render(&v, "admin/pages.html", json!({ "title": "Pages", "rows": rows }))
 }
 ```
 
 ```html
 {% extends "layouts/admin.html" %}
-{% block content %}
-  <h1>{{ title }}</h1>
-{% endblock content %}
+{% block breadcrumb %}<nav ...>Dashboard › Pages</nav>{% endblock breadcrumb %}
+{% block content %}<h1>{{ title }}</h1>{% endblock content %}
 ```
 
-`AdminPage` already redirects guests to the login page and builds the sidebar. Always pass a `title`. Form posts must call `module_auth::same_origin(&headers)` first.
+`AdminPage` redirects guests to login and builds the sidebar. Always pass a `title`. Form posts call `module_auth::same_origin(&headers)` first. The full rules and a checklist are in `docs/CONVENTIONS.md`.
 
 <!-- foot:start -->
 ---

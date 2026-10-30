@@ -45,9 +45,30 @@ async fn strict_mode_fails_when_a_translation_is_missing() {
         .await
         .unwrap_err();
     assert!(
-        error.to_string().contains("2 translation(s) missing"),
+        error.to_string().contains("1 translation(s) missing"),
         "got: {error}"
     );
+
+    // English alone is enough: Bangla is optional and falls back to it.
+    let page = module_pages::pages::Entity::find()
+        .one(db)
+        .await
+        .unwrap()
+        .unwrap();
+    module_pages::page_translations::ActiveModel {
+        page_id: Set(page.id),
+        locale: Set("en".to_string()),
+        title: Set(Some("Untranslated".to_string())),
+        meta_description: Set(None),
+        body_html: Set(Some("<p>English</p>".to_string())),
+        ..Default::default()
+    }
+    .insert(db)
+    .await
+    .unwrap();
+    run_task::<App>(&boot.app_context, Some(&name), &vars(true))
+        .await
+        .unwrap();
 
     module_pages::pages::Entity::delete_many()
         .exec(db)

@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 03 of 17** | [Index](00-index.md) | [Previous: 02 Setup](02-setup.md) | [Next: 04 Project structure](04-project-structure.md)
+**Tutorial 3 of 21** | [Index](00-index.md) | [Previous: 2 Setup](02-setup.md) | [Next: 4 Project structure](04-project-structure.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -21,6 +21,10 @@
 15. [Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)  
 16. [The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)  
 17. [Media library (`media` module)](17-media-library.md)  
+18. [JSON API and Google login](18-json-api-and-google-login.md)  
+19. [Components and the contact form](19-components-and-contact-form.md)  
+20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
+21. [Conventions](21-conventions.md)  
 
 </details>
 <!-- nav:end -->
@@ -167,5 +171,5 @@ async fn show() { }
 
 <!-- foot:start -->
 ---
-[Previous: 02 Setup](02-setup.md) | [Index](00-index.md) | [Next: 04 Project structure](04-project-structure.md)
+[Previous: 2 Setup](02-setup.md) | [Index](00-index.md) | [Next: 4 Project structure](04-project-structure.md)
 <!-- foot:end -->

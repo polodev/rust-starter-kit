@@ -260,9 +260,22 @@ async fn saving_the_text_updates_the_public_page_at_once_and_cleans_unsafe_html(
         assert!(bangla.contains("আমাদের দল") && bangla.contains("<em>প্রস্তুত</em>"));
 
         let stored = translation(&ctx, id, "en").await.unwrap();
-        assert_eq!(stored.title, "About our team", "the title is trimmed");
+        assert_eq!(
+            stored.title.as_deref(),
+            Some("About our team"),
+            "the title is trimmed"
+        );
         assert!(
-            !stored.body_html.contains("<script") && !stored.body_html.contains("onclick"),
+            !stored
+                .body_html
+                .clone()
+                .unwrap_or_default()
+                .contains("<script")
+                && !stored
+                    .body_html
+                    .clone()
+                    .unwrap_or_default()
+                    .contains("onclick"),
             "the database holds the cleaned HTML"
         );
 
@@ -287,27 +300,27 @@ async fn invalid_text_saves_nothing_and_shows_what_was_typed() {
         let marketer = login(&server, "market@example.com", "password123").await;
         let path = format!("/admin/pages/{id}/content");
 
-        // English is fine, Bangla has no title: nothing is saved, not even the good language.
+        // English has no title: nothing is saved, not even the good Bangla text.
         let response = post(&server, &path, &marketer)
             .form(&[
-                ("title_en", "Changed title"),
+                ("title_en", ""),
                 ("meta_en", ""),
                 ("body_en", "<p>Changed body</p>"),
-                ("title_bn", ""),
+                ("title_bn", "নতুন শিরোনাম"),
                 ("meta_bn", ""),
                 ("body_bn", "<p>বাংলা</p>"),
             ])
             .await;
         assert_eq!(response.status_code(), 422);
         let html = response.text();
-        assert!(html.contains("বাংলা: the title is required."), "{html}");
+        assert!(html.contains("English: the title is required."), "{html}");
         assert!(
-            html.contains("Changed title") && html.contains("&lt;p&gt;Changed body&lt;/p&gt;"),
+            html.contains("&lt;p&gt;Changed body&lt;/p&gt;") && html.contains("নতুন শিরোনাম"),
             "what was typed is shown again, HTML-escaped inside the textarea"
         );
         assert_eq!(
             translation(&ctx, id, "en").await.unwrap().title,
-            "About us",
+            Some("About us".to_string()),
             "nothing was saved"
         );
 
@@ -350,7 +363,7 @@ async fn invalid_text_saves_nothing_and_shows_what_was_typed() {
         }
         assert_eq!(
             translation(&ctx, id, "bn").await.unwrap().title,
-            "আমাদের সম্পর্কে",
+            Some("আমাদের সম্পর্কে".to_string()),
             "still the original Bangla title"
         );
     });
@@ -378,9 +391,9 @@ async fn a_missing_language_can_be_written_later() {
         page_translations::ActiveModel {
             page_id: Set(page.id),
             locale: Set("en".into()),
-            title: Set("News".into()),
-            meta_description: Set(String::new()),
-            body_html: Set("<p>English only</p>".into()),
+            title: Set(Some("News".into())),
+            meta_description: Set(None),
+            body_html: Set(Some("<p>English only</p>".into())),
             ..Default::default()
         }
         .insert(&ctx.db)
@@ -393,8 +406,9 @@ async fn a_missing_language_can_be_written_later() {
             .await
             .text();
         assert!(
-            show.contains("(missing)") && show.contains("No বাংলা version yet."),
-            "the show page points out the missing language"
+            show.contains("(uses English)")
+                && show.contains("No বাংলা version: visitors see the English text."),
+            "the show page says the missing language uses English"
         );
         // Visitors who choose Bangla still get the English text.
         assert!(server
@@ -418,7 +432,7 @@ async fn a_missing_language_can_be_written_later() {
         assert_eq!(response.status_code(), 303);
         assert_eq!(
             translation(&ctx, page.id, "bn").await.unwrap().title,
-            "খবর",
+            Some("খবর".to_string()),
             "the new language was created"
         );
         assert!(server
@@ -481,7 +495,7 @@ async fn only_people_who_may_manage_pages_can_save_text() {
         );
         assert_eq!(
             translation(&ctx, id, "en").await.unwrap().title,
-            "About us",
+            Some("About us".to_string()),
             "nothing changed"
         );
     });
@@ -525,5 +539,97 @@ async fn the_page_list_links_to_the_show_page_and_the_editor() {
                 && !html.contains(r#"data-testid="edit-link""#),
             "look-only staff get no Edit link"
         );
+    });
+}
+
+#[tokio::test]
+#[serial]
+async fn bangla_is_optional_and_each_empty_part_uses_the_english_text() {
+    app!(|server, ctx| async move {
+        loco_modular::seed_all(&modules_registry::all(), &ctx)
+            .await
+            .unwrap();
+        user(&ctx, "market@example.com", Some("marketing")).await;
+        let marketer = login(&server, "market@example.com", "password123").await;
+        let id = page_id(&ctx, "about").await;
+        let path = format!("/admin/pages/{id}/content");
+        let save = |fields: Vec<(&'static str, &'static str)>| {
+            let (server, marketer, path) = (&server, marketer.clone(), path.clone());
+            async move {
+                let mut all = vec![("title_en", "About us"), ("body_en", "<p>English text</p>")];
+                all.extend(fields);
+                post(server, &path, &marketer).form(&all).await
+            }
+        };
+
+        // English stays required, whatever Bangla holds.
+        let refused = post(&server, &path, &marketer)
+            .form(&[
+                ("title_en", ""),
+                ("body_en", "<p>x</p>"),
+                ("title_bn", "শিরোনাম"),
+                ("body_bn", "<p>বাংলা</p>"),
+            ])
+            .await;
+        assert_eq!(refused.status_code(), 422);
+        assert!(refused.text().contains("English: the title is required."));
+
+        // Nothing typed for Bangla: its row goes away and visitors see English.
+        assert_eq!(save(vec![]).await.status_code(), 303);
+        assert!(
+            translation(&ctx, id, "bn").await.is_none(),
+            "a cleared language has no row"
+        );
+        let page = server.get("/pages/about?lang=bn").await.text();
+        assert!(page.contains("About us") && page.contains("English text"));
+
+        // Only a Bangla title: the title is Bangla, the text is English.
+        assert_eq!(
+            save(vec![("title_bn", "আমাদের পরিচয়")]).await.status_code(),
+            303
+        );
+        let stored = translation(&ctx, id, "bn").await.unwrap();
+        assert_eq!(
+            (
+                stored.title.as_deref(),
+                stored.meta_description.as_deref(),
+                stored.body_html.as_deref()
+            ),
+            (Some("আমাদের পরিচয়"), None, None),
+            "empty parts are stored as NULL"
+        );
+        let page = server.get("/pages/about?lang=bn").await.text();
+        assert!(page.contains("আমাদের পরিচয়") && page.contains("English text"));
+        let show = server
+            .get(&format!("/admin/pages/{id}"))
+            .add_header("cookie", marketer.clone())
+            .await
+            .text();
+        assert!(show.contains("The English text is used."));
+
+        // Only a Bangla text: the text is Bangla, the title is English.
+        assert_eq!(
+            save(vec![("body_bn", "<p>শুধু বাংলা লেখা</p>")])
+                .await
+                .status_code(),
+            303
+        );
+        let page = server.get("/pages/about?lang=bn").await.text();
+        assert!(page.contains("শুধু বাংলা লেখা") && page.contains("About us"));
+        assert!(!page.contains("আমাদের পরিচয়"));
+
+        // Bangla limits still apply to what is typed.
+        let long = "ক".repeat(256);
+        let too_long = post(&server, &path, &marketer)
+            .form(&[
+                ("title_en", "About us"),
+                ("body_en", "<p>English text</p>"),
+                ("title_bn", long.as_str()),
+            ])
+            .await;
+        assert_eq!(too_long.status_code(), 422);
+        assert!(too_long
+            .text()
+            .contains("বাংলা: the title is longer than 255 characters."));
     });
 }

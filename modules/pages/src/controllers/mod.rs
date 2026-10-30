@@ -55,35 +55,49 @@ async fn find_page(ctx: &AppContext, slug: &str, locale: &str) -> Result<Option<
         return Ok(None);
     };
 
-    for candidate in [locale, DEFAULT_LOCALE] {
-        if let Some(translation) = page_translations::Entity::find()
-            .filter(page_translations::Column::PageId.eq(page.id))
-            .filter(page_translations::Column::Locale.eq(candidate))
-            .one(db)
-            .await?
-        {
-            let feature_image = page
-                .get_first_media(ctx, FEATURE_IMAGE)
-                .await?
-                .map(|media| FeatureImage {
-                    absolute_url: format!("{}{}", ctx.config.server.full_url(), media.url()),
-                    alt: media
-                        .custom_property("alt")
-                        .and_then(|alt| alt.as_str().map(str::to_owned))
-                        .unwrap_or_default(),
-                    url: media.url(),
-                });
-            return Ok(Some(PageView {
-                id: page.id,
-                feature_image,
-                title: translation.title,
-                meta_description: translation.meta_description,
-                body_html: translation.body_html,
-                locale: translation.locale,
-            }));
-        }
-    }
-    Ok(None)
+    // Each part falls back on its own: a Bangla page may have its own title but borrow the English
+    // text, or the other way round.
+    let rows = page_translations::Entity::find()
+        .filter(page_translations::Column::PageId.eq(page.id))
+        .filter(page_translations::Column::Locale.is_in([locale, DEFAULT_LOCALE]))
+        .all(db)
+        .await?;
+    let wanted = rows.iter().find(|row| row.locale == locale);
+    let default = rows.iter().find(|row| row.locale == DEFAULT_LOCALE);
+    let pick = |field: fn(&page_translations::Model) -> &Option<String>| {
+        wanted
+            .and_then(|row| field(row).clone())
+            .filter(|text| !text.trim().is_empty())
+            .or_else(|| default.and_then(|row| field(row).clone()))
+    };
+    let (Some(title), Some(body_html)) = (pick(|row| &row.title), pick(|row| &row.body_html))
+    else {
+        return Ok(None);
+    };
+    let own_text = wanted
+        .and_then(|row| row.body_html.as_deref())
+        .is_some_and(|text| !text.trim().is_empty());
+
+    let feature_image = page
+        .get_first_media(ctx, FEATURE_IMAGE)
+        .await?
+        .map(|media| FeatureImage {
+            absolute_url: format!("{}{}", ctx.config.server.full_url(), media.url()),
+            alt: media
+                .custom_property("alt")
+                .and_then(|alt| alt.as_str().map(str::to_owned))
+                .unwrap_or_default(),
+            url: media.url(),
+        });
+    Ok(Some(PageView {
+        id: page.id,
+        feature_image,
+        title,
+        meta_description: pick(|row| &row.meta_description).unwrap_or_default(),
+        body_html,
+        // The language of the text visitors actually read.
+        locale: if own_text { locale } else { DEFAULT_LOCALE }.to_string(),
+    }))
 }
 
 #[debug_handler]

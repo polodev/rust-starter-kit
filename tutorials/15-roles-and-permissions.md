@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 15 of 17** | [Index](00-index.md) | [Previous: 14 Login, register and sessions (`auth` module)](14-auth-and-sessions.md) | [Next: 16 The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)
+**Tutorial 15 of 21** | [Index](00-index.md) | [Previous: 14 Login, register and sessions (`auth` module)](14-auth-and-sessions.md) | [Next: 16 The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -21,13 +21,17 @@
 **15. [Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)**  
 16. [The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)  
 17. [Media library (`media` module)](17-media-library.md)  
+18. [JSON API and Google login](18-json-api-and-google-login.md)  
+19. [Components and the contact form](19-components-and-contact-form.md)  
+20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
+21. [Conventions](21-conventions.md)  
 
 </details>
 <!-- nav:end -->
 
 # 15. Roles and permissions (`role-permission` module)
 
-Ported from Dokani. Roles and permissions are defined **in code**, synced into the database, and checked per request.
+Roles and permissions are defined **in code**, synced into the database, and checked per request.
 
 ## The hierarchy
 
@@ -66,7 +70,7 @@ cargo modular command:run roles:assign email:demo@gmail.com role:developer
 cargo modular command:run roles:revoke email:demo@gmail.com
 ```
 
-`db seed` also syncs. The admin area `/admin/role-permissions` has an overview, roles, permissions, a permission matrix, user assignments and backend links (the same set as Bimafy's Advanced Authorization), and developers can change someone's role and direct permissions from its User Assignments tab or someone's role from `/admin/users` (never their own, so nobody locks themselves out).
+`db seed` also syncs. The admin area `/admin/role-permissions` has an overview, roles, permissions, a permission matrix, user assignments and backend links, and developers can change someone's role and direct permissions from its User Assignments tab or someone's role from `/admin/users` (never their own, so nobody locks themselves out).
 
 ## Rules
 

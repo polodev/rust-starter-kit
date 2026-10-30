@@ -203,9 +203,9 @@ pub async fn run(db: &DatabaseConnection) -> Result<()> {
             page_translations::ActiveModel {
                 page_id: Set(page.id),
                 locale: Set(translation.locale.to_string()),
-                title: Set(translation.title.to_string()),
-                meta_description: Set(translation.meta_description.to_string()),
-                body_html: Set(translation.body_html.to_string()),
+                title: Set(Some(translation.title.to_string())),
+                meta_description: Set(Some(translation.meta_description.to_string())),
+                body_html: Set(Some(translation.body_html.to_string())),
                 ..Default::default()
             }
             .insert(db)

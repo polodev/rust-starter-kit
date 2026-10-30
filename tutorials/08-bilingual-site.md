@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 08 of 17** | [Index](00-index.md) | [Previous: 07 Database: migrations, entities, queries, seeding](07-database.md) | [Next: 09 Cache and sessions](09-cache-and-sessions.md)
+**Tutorial 8 of 21** | [Index](00-index.md) | [Previous: 7 Database: migrations, entities, queries, seeding](07-database.md) | [Next: 9 Cache and sessions](09-cache-and-sessions.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -21,6 +21,10 @@
 15. [Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)  
 16. [The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)  
 17. [Media library (`media` module)](17-media-library.md)  
+18. [JSON API and Google login](18-json-api-and-google-login.md)  
+19. [Components and the contact form](19-components-and-contact-form.md)  
+20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
+21. [Conventions](21-conventions.md)  
 
 </details>
 <!-- nav:end -->
@@ -90,7 +94,7 @@ page_translations:  page_id=1  locale=en  title=About us
                     page_id=1  locale=bn  title=আমাদের সম্পর্কে
 ```
 
-The controller asks for the visitor's language first and falls back to English if that translation is missing, so a half-translated page never breaks.
+**English is required; every other language is optional.** In the admin editor an English title and text must be filled in. A Bangla title, description or text can be left empty: it is stored as `NULL` and visitors reading Bangla see the English text for just that part (the three parts fall back on their own). Clearing all Bangla fields removes the Bangla row, and the page is simply English. A half-translated page never breaks.
 
 To add a language later (for example Hindi): add `hi` to `SUPPORTED_LOCALES`, create `assets/i18n/hi-IN/main.ftl`, map it in `fluent_tag`, and add translations.
 
@@ -108,5 +112,5 @@ curl -s -i "http://localhost:5150/language/bn?next=/pages/about"
 
 <!-- foot:start -->
 ---
-[Previous: 07 Database: migrations, entities, queries, seeding](07-database.md) | [Index](00-index.md) | [Next: 09 Cache and sessions](09-cache-and-sessions.md)
+[Previous: 7 Database: migrations, entities, queries, seeding](07-database.md) | [Index](00-index.md) | [Next: 9 Cache and sessions](09-cache-and-sessions.md)
 <!-- foot:end -->

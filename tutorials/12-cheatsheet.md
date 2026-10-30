@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 12 of 17** | [Index](00-index.md) | [Previous: 11 Assets and styling](11-assets-and-styling.md) | [Next: 13 Console commands and the scheduler](13-console-and-schedule.md)
+**Tutorial 12 of 21** | [Index](00-index.md) | [Previous: 11 Assets and styling](11-assets-and-styling.md) | [Next: 13 Console commands and the scheduler](13-console-and-schedule.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -21,6 +21,10 @@
 15. [Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)  
 16. [The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)  
 17. [Media library (`media` module)](17-media-library.md)  
+18. [JSON API and Google login](18-json-api-and-google-login.md)  
+19. [Components and the contact form](19-components-and-contact-form.md)  
+20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
+21. [Conventions](21-conventions.md)  
 
 </details>
 <!-- nav:end -->
@@ -79,12 +83,12 @@ In this order:
 1. **More generators** that follow Loco: `cargo modular make:model`, `make:controller`, `make:scaffold` with `--module`, and a `make:resource` for admin CRUD.
 2. **admin-layout** module: sidebar built from a registry, topbar, flash messages, HTMX helpers, Tailwind.
 3. **Login sessions**: cookie session stored in the database, with the language preference saved on the user.
-4. **role-permission** module, ported from Dokani: config-defined roles with inheritance, wildcard permissions, fail-closed admin routes.
+4. **role-permission** module: config-defined roles with inheritance, wildcard permissions, fail-closed admin routes.
 5. **api** module under `/api/v1`: response envelope, device tokens, rate limits, request log.
-6. **Tenant URLs** like Dokani: `/business/{tenant}/...`, with the slug redirecting to the id URL.
+6. **Tenant URLs:** `/business/{tenant}/...`, with the slug redirecting to the id URL.
 7. **Storage** for uploads on R2, settings, activity log, queue and scheduler pages.
 
-The full plan is in `docs/rust-starter-kit-ideas.md`.
+
 
 <!-- foot:start -->
 ---

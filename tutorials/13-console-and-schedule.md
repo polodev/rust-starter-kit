@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 13 of 17** | [Index](00-index.md) | [Previous: 12 Cheat sheet and what to build next](12-cheatsheet.md) | [Next: 14 Login, register and sessions (`auth` module)](14-auth-and-sessions.md)
+**Tutorial 13 of 21** | [Index](00-index.md) | [Previous: 12 Cheat sheet and what to build next](12-cheatsheet.md) | [Next: 14 Login, register and sessions (`auth` module)](14-auth-and-sessions.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -21,6 +21,10 @@
 15. [Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)  
 16. [The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)  
 17. [Media library (`media` module)](17-media-library.md)  
+18. [JSON API and Google login](18-json-api-and-google-login.md)  
+19. [Components and the contact form](19-components-and-contact-form.md)  
+20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
+21. [Conventions](21-conventions.md)  
 
 </details>
 <!-- nav:end -->
@@ -117,26 +121,9 @@ cargo modular schedule:list      # show all jobs and their cron
 cargo modular schedule:work      # run the scheduler in the foreground
 ```
 
-## Tinker: change the database from a prompt
+## Tinker
 
-Laravel's `php artisan tinker` evaluates PHP as you type it. Rust is compiled, so it cannot evaluate Rust that way. This project gives you two consoles instead:
-
-| Command | What it is |
-|---|---|
-| `cargo run -- task tinker` | Built-in SQL console. Type SQL ending with `;`. Dot commands: `.tables`, `.desc users`, `.count users`, `.hash secret`, `.begin`, `.commit`, `.rollback`, `.help`, `.exit`. |
-| `cargo run -- task tinker:eloquent` | The `rust-eloquent-tinker` module: real PsySH with Eloquent models and the `DB` facade on the same database. |
-
-```text
-tinker> update users set name = 'Ada' where id = 1;
-1 row(s) affected
-tinker> update users set name = 'x';
-This has no WHERE and changes every row.
-run it anyway? [y/N]
-```
-
-Use `.begin` first to try a change safely: nothing is saved until `.commit`, and `.rollback` throws it away. In production the SQL console is read-only unless you add `write:true`.
-
-`tinker:eloquent` needs PHP 8.2+ and Composer (packages install on the first run) and is for people who already think in Eloquent: `User::first()`, `DB::table('users')->where(...)->update([...])`. Passwords there must be **Argon2id**, because that is what this app verifies. Assigning `password` on the `User` model does it for you, or call `rust_password('secret')`. Details are in `modules/rust-eloquent-tinker/README.md`.
+`cargo run -- task tinker` is a SQL console (with transactions) and `cargo run -- task tinker:eloquent` opens Eloquent and the `DB` facade on the same database. See [tutorial 20](20-tinker-and-laravel-database.md).
 
 ## Running it in production
 

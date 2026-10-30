@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 07 of 17** | [Index](00-index.md) | [Previous: 06 Routes, controllers and views](06-routes-controllers-views.md) | [Next: 08 A bilingual site (English and Bangla)](08-bilingual-site.md)
+**Tutorial 7 of 21** | [Index](00-index.md) | [Previous: 6 Routes, controllers and views](06-routes-controllers-views.md) | [Next: 8 A bilingual site (English and Bangla)](08-bilingual-site.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -21,6 +21,10 @@
 15. [Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)  
 16. [The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)  
 17. [Media library (`media` module)](17-media-library.md)  
+18. [JSON API and Google login](18-json-api-and-google-login.md)  
+19. [Components and the contact form](19-components-and-contact-form.md)  
+20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
+21. [Conventions](21-conventions.md)  
 
 </details>
 <!-- nav:end -->
@@ -128,5 +132,5 @@ Run `cargo run -- db seed`. Running it twice leaves the same 3 pages and 6 trans
 
 <!-- foot:start -->
 ---
-[Previous: 06 Routes, controllers and views](06-routes-controllers-views.md) | [Index](00-index.md) | [Next: 08 A bilingual site (English and Bangla)](08-bilingual-site.md)
+[Previous: 6 Routes, controllers and views](06-routes-controllers-views.md) | [Index](00-index.md) | [Next: 8 A bilingual site (English and Bangla)](08-bilingual-site.md)
 <!-- foot:end -->

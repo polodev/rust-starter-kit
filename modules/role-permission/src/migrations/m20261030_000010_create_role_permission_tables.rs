@@ -52,7 +52,7 @@ impl MigrationTrait for Migration {
         )
         .await?;
 
-        // One role per user, like Dokani; direct permission exceptions live in permission_user.
+        // One role per user; direct permission exceptions live in permission_user.
         m.create_index(
             Index::create()
                 .name("idx-role_users-user_id-unique")

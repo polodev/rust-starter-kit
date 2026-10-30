@@ -306,7 +306,7 @@ async fn profile_image_is_one_file_that_can_be_replaced_and_removed() {
 
 #[tokio::test]
 #[serial]
-async fn role_permission_pages_follow_the_bimafy_set_and_assign_roles() {
+async fn role_permission_pages_cover_the_standard_screens_and_assign_roles() {
     request::<rust_starter::app::App, _, _>(|server, ctx| async move {
         user(&ctx, "boss@example.com", Some("developer")).await;
         user(&ctx, "staff@example.com", None).await;
