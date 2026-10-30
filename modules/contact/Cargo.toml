@@ -18,3 +18,4 @@ tracing = { workspace = true }
 module-site-layout = { path = "../site-layout" }
 module-admin-layout = { path = "../admin-layout" }
 module-auth = { path = "../auth" }
+loco-activity-log = { path = "../../packages/loco-activity-log" }

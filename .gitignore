@@ -18,3 +18,5 @@
 
 # private planning notes (they refer to other local projects); keep them out of the public repo
 /docs/internal/
+/storage/mail/
+/storage/backups/

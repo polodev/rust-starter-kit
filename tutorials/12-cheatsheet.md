@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 12 of 21** | [Index](00-index.md) | [Previous: 11 Assets and styling](11-assets-and-styling.md) | [Next: 13 Console commands and the scheduler](13-console-and-schedule.md)
+**Tutorial 12 of 25** | [Index](00-index.md) | [Previous: 11 Assets and styling](11-assets-and-styling.md) | [Next: 13 Console commands and the scheduler](13-console-and-schedule.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -25,6 +25,10 @@
 19. [Components and the contact form](19-components-and-contact-form.md)  
 20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
 21. [Conventions](21-conventions.md)  
+22. [Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md)  
+23. [PDF and email](23-pdf-and-email.md)  
+24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
+25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
 
 </details>
 <!-- nav:end -->
@@ -76,19 +80,17 @@
 | Test database refused | `TEST_DATABASE_URL` must end in `_test` |
 | `unwrap()` panic in a handler | Use `?` or return a proper error |
 
-## What to build next
+## Built, and what to build next
 
-In this order:
+**Built:** the `cargo modular` generators, admin shell and sidebar, login sessions, roles and permissions, a bearer-token JSON API, Google sign-in, a Spatie-compatible media library, a contact form with an admin inbox, an activity log, a queue monitor, database backups, and the SQL and Eloquent consoles. The README checklist is the full list.
 
-1. **More generators** that follow Loco: `cargo modular make:model`, `make:controller`, `make:scaffold` with `--module`, and a `make:resource` for admin CRUD.
-2. **admin-layout** module: sidebar built from a registry, topbar, flash messages, HTMX helpers, Tailwind.
-3. **Login sessions**: cookie session stored in the database, with the language preference saved on the user.
-4. **role-permission** module: config-defined roles with inheritance, wildcard permissions, fail-closed admin routes.
-5. **api** module under `/api/v1`: response envelope, device tokens, rate limits, request log.
-6. **Tenant URLs:** `/business/{tenant}/...`, with the slug redirecting to the id URL.
-7. **Storage** for uploads on R2, settings, activity log, queue and scheduler pages.
+**Next, in this order:**
 
-
+1. **More generators**: `cargo modular make:model`, `make:controller`, `make:scaffold` with `--module`, and `make:resource` for admin CRUD.
+2. **Media on R2**: public collections to a public bucket, private ones to a private bucket (the keys are already in `.env`).
+3. **Settings, menus and a blog** module, plus email verification and password reset.
+4. **Tenant URLs:** `/business/{tenant}/...`, with the slug redirecting to the id URL.
+5. **Image conversions** (thumbnails), sitemap and SEO tags, OpenAPI documentation.
 
 <!-- foot:start -->
 ---

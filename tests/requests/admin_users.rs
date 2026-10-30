@@ -365,18 +365,20 @@ async fn role_permission_pages_cover_the_standard_screens_and_assign_roles() {
                 .content_type("application/x-www-form-urlencoded")
                 .bytes(body.into())
         };
-        assign("role=marketing&permissions=logs.view&permissions=queue.view").await;
+        assign("role=marketing&permissions=activity_logs.view&permissions=queue.view").await;
         let access = module_role_permission::access_for(&ctx.db, staff.id)
             .await
             .unwrap();
         assert!(
-            access.has_role("marketing") && access.can("logs.view") && access.can("queue.view")
+            access.has_role("marketing")
+                && access.can("activity_logs.view")
+                && access.can("queue.view")
         );
-        assign("role=marketing&permissions=logs.view").await;
+        assign("role=marketing&permissions=activity_logs.view").await;
         let access = module_role_permission::access_for(&ctx.db, staff.id)
             .await
             .unwrap();
-        assert!(access.can("logs.view") && !access.can("queue.view"));
+        assert!(access.can("activity_logs.view") && !access.can("queue.view"));
 
         // Refusals: role-management permissions, unknown role, and your own account.
         for body in [

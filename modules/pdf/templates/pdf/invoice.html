@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="{{ lang | default(value='en') }}">
+<head>
+<meta charset="utf-8">
+<title>Invoice {{ number }}</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Noto Sans Bengali", "Siyam Rupali", "Helvetica Neue", Arial, sans-serif; font-size: 11pt; color: #1f2937; margin: 0; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1e3a5f; padding-bottom: 12px; }
+  .brand { font-size: 22pt; font-weight: 700; color: #1e3a5f; }
+  .muted { color: #6b7280; font-size: 9.5pt; }
+  h1 { margin: 0; font-size: 20pt; letter-spacing: 1px; color: #1e3a5f; text-align: right; }
+  .meta { margin-top: 18px; display: flex; justify-content: space-between; gap: 24px; }
+  .box { flex: 1; }
+  .box h3 { margin: 0 0 4px; font-size: 9.5pt; text-transform: uppercase; color: #6b7280; letter-spacing: .5px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 22px; }
+  th { background: #1e3a5f; color: #fff; text-align: left; padding: 8px 10px; font-size: 10pt; }
+  th.num, td.num { text-align: right; }
+  td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  tr:nth-child(even) td { background: #f9fafb; }
+  .totals { margin-top: 14px; margin-left: auto; width: 55%; }
+  .totals td { border: 0; padding: 4px 10px; background: none !important; }
+  .totals tr.grand td { border-top: 2px solid #1e3a5f; font-weight: 700; font-size: 13pt; color: #1e3a5f; padding-top: 8px; }
+  .status { display: inline-block; padding: 2px 10px; border-radius: 12px; background: #fef3c7; color: #92400e; font-size: 9.5pt; font-weight: 600; }
+  .status.paid { background: #d1fae5; color: #065f46; }
+  .note { margin-top: 28px; padding: 10px 12px; background: #f3f4f6; border-left: 4px solid #1e3a5f; font-size: 10pt; }
+  .foot { margin-top: 30px; text-align: center; color: #6b7280; font-size: 9pt; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <div class="brand">{{ seller.name }}</div>
+      <div class="muted">{{ seller.address }}<br>{{ seller.email }}</div>
+    </div>
+    <div>
+      <h1>INVOICE</h1>
+      <div class="muted" style="text-align:right">{{ number }}</div>
+    </div>
+  </div>
+
+  <div class="meta">
+    <div class="box">
+      <h3>Billed to</h3>
+      <strong>{{ customer.name }}</strong><br>
+      {{ customer.address }}<br>
+      <span class="muted">{{ customer.email }}</span>
+    </div>
+    <div class="box" style="text-align:right">
+      <h3>Details</h3>
+      Issued: {{ issued }}<br>
+      Due: {{ due }}<br>
+      <span class="status {% if paid %}paid{% endif %}">{% if paid %}PAID{% else %}DUE{% endif %}</span>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>#</th><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
+    <tbody>
+      {% for item in items %}
+      <tr><td>{{ loop.index }}</td><td>{{ item.description }}</td><td class="num">{{ item.quantity }}</td><td class="num">{{ currency }} {{ item.unit_price }}</td><td class="num">{{ currency }} {{ item.amount }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr><td>Subtotal</td><td class="num">{{ currency }} {{ subtotal }}</td></tr>
+    <tr><td>{{ tax_label }} ({{ tax_percent }}%)</td><td class="num">{{ currency }} {{ tax }}</td></tr>
+    <tr class="grand"><td>Total</td><td class="num">{{ currency }} {{ total }}</td></tr>
+  </table>
+
+  {% if note %}<div class="note">{{ note }}</div>{% endif %}
+  <div class="foot">{{ footer }}</div>
+</body>
+</html>

@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 10 of 21** | [Index](00-index.md) | [Previous: 9 Cache and sessions](09-cache-and-sessions.md) | [Next: 11 Assets and styling](11-assets-and-styling.md)
+**Tutorial 10 of 25** | [Index](00-index.md) | [Previous: 9 Cache and sessions](09-cache-and-sessions.md) | [Next: 11 Assets and styling](11-assets-and-styling.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -25,6 +25,10 @@
 19. [Components and the contact form](19-components-and-contact-form.md)  
 20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
 21. [Conventions](21-conventions.md)  
+22. [Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md)  
+23. [PDF and email](23-pdf-and-email.md)  
+24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
+25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
 
 </details>
 <!-- nav:end -->
@@ -93,6 +97,12 @@ async fn unknown_page_is_a_translated_404() {
 1. The happy path.
 2. The failure paths: missing record, invalid input, wrong language.
 3. The unusual paths: running the seeder twice, hostile input such as `next=//evil.example`.
+
+## Guard tests and test notes
+
+- `tests/migrations.rs` reads the migration files and fails if a table is altered by a second file, created twice, if two files share a sequence number, if there are not fewer files than tables, or if the role tables, the page tables or the queue tables are split over files.
+- `tests/tasks/db_backup.rs` does a real dump with `mysqldump` of the test database into a temporary folder. It is skipped when `mysqldump` is not installed.
+- Tests use `config/test.yaml` and the test database; `.env` is not involved. Run one `cargo test` at a time.
 
 ## Before you say it is done
 

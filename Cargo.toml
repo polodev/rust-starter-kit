@@ -51,6 +51,9 @@ fluent-templates = { version = "0.15", features = ["tera"] }
 unic-langid = "0.9"
 axum-extra = { version = "0.10", features = ["form"] }
 rustyline = "14"
+dotenvy = "0.15"
+module-queue-watcher = { path = "modules/queue-watcher" }
+module-media = { path = "modules/media" }
 
 [[bin]]
 name = "rust-starter-cli"
@@ -58,12 +61,18 @@ path = "src/bin/main.rs"
 required-features = []
 
 [dev-dependencies]
+module-mail = { path = "modules/mail" }
+module-ai-service = { path = "modules/ai-service" }
+module-pdf = { path = "modules/pdf" }
+module-db-backup = { path = "modules/db-backup" }
+flate2 = "1"
 loco-rs = { workspace = true, features = ["testing"] }
 serial_test = "3.1.1"
 rstest = "0.25"
 insta = { version = "1.34", features = ["redactions", "yaml", "filters"] }
 module-pages = { path = "modules/pages" }
-module-media = { path = "modules/media" }
 axum-test = { version = "17.0.1", features = [] }
 module-auth = { path = "modules/auth" }
 module-contact = { path = "modules/contact" }
+module-activity-log = { path = "modules/activity-log" }
+loco-activity-log = { path = "packages/loco-activity-log" }

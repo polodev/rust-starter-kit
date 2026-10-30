@@ -20,3 +20,4 @@ module-admin-layout = { path = "../admin-layout" }
 module-auth = { path = "../auth" }
 module-media = { path = "../media" }
 ammonia = "4"
+loco-activity-log = { path = "../../packages/loco-activity-log" }

@@ -170,6 +170,8 @@ async fn user_update(
         return Ok(back("taken"));
     }
 
+    let old = json!({ "name": user.name, "email": user.email });
+    let new = json!({ "name": name, "email": email });
     let mut active: users::ActiveModel = user.into();
     active.name = Set(name);
     active.email = Set(email.clone());
@@ -178,6 +180,14 @@ async fn user_update(
     if active.update(&ctx.db).await.is_err() {
         return Ok(back("taken"));
     }
+    loco_activity_log::activity(&ctx.db)
+        .in_log("users")
+        .caused_by("user", page.user.id)
+        .performed_on("user", user_id)
+        .event("updated")
+        .with_changes(loco_activity_log::changes(&old, &new, &[]))
+        .log_quietly("Updated the user's details")
+        .await;
     Ok(Redirect::to(&format!("/admin/users/{user_id}?saved=profile")).into_response())
 }
 
@@ -217,7 +227,16 @@ async fn user_image_upload(
         .to_media_collection(LOGO_COLLECTION)
         .await;
     match result {
-        Ok(_) => Ok(image_back(user_id, "saved", "image")),
+        Ok(_) => {
+            loco_activity_log::activity(&ctx.db)
+                .in_log("users")
+                .caused_by("user", page.user.id)
+                .performed_on("user", user_id)
+                .event("image_changed")
+                .log_quietly("Changed the profile image")
+                .await;
+            Ok(image_back(user_id, "saved", "image"))
+        }
         Err(MediaError::Empty) => Ok(image_back(user_id, "error", "image-empty")),
         Err(MediaError::UnsupportedType) => Ok(image_back(user_id, "error", "image-type")),
         Err(MediaError::TooLarge { .. }) => Ok(image_back(user_id, "error", "image-size")),
@@ -242,6 +261,13 @@ async fn user_image_remove(
     user_owner(user_id)
         .clear_media_collection(&ctx, LOGO_COLLECTION)
         .await?;
+    loco_activity_log::activity(&ctx.db)
+        .in_log("users")
+        .caused_by("user", page.user.id)
+        .performed_on("user", user_id)
+        .event("image_removed")
+        .log_quietly("Removed the profile image")
+        .await;
     Ok(image_back(user_id, "saved", "image-removed"))
 }
 
@@ -270,6 +296,13 @@ async fn user_generate_password(
     active.password = Set(loco_rs::hash::hash_password(&password)?);
     active.updated_at = Set(chrono::Utc::now().fixed_offset());
     active.update(&ctx.db).await?;
+    loco_activity_log::activity(&ctx.db)
+        .in_log("users")
+        .caused_by("user", page.user.id)
+        .performed_on("user", user_id)
+        .event("password_generated")
+        .log_quietly("Generated a new password")
+        .await;
 
     let keep_session = if user_id == page.user.id {
         page.user.session_id

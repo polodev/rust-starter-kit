@@ -110,7 +110,7 @@ pub trait InteractsWithMedia: HasMedia {
         Ok(self
             .get_first_media(ctx, collection)
             .await?
-            .map(|media| media.url()))
+            .map(|media| crate::service::public_url(ctx, &media)))
     }
 
     /// Deletes every file of the collection; returns how many.

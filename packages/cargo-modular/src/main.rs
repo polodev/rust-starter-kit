@@ -49,6 +49,18 @@ enum Command {
         #[arg(long)]
         root: Option<PathBuf>,
     },
+    /// Create a mail class with HTML and text templates in a module (like Laravel's make:mail)
+    #[command(name = "make:mail")]
+    MakeMail {
+        name: String,
+        /// The module that owns the mail (it gets a dependency on module-mail)
+        #[arg(long)]
+        module: String,
+        #[arg(long)]
+        dry_run: bool,
+        #[arg(long)]
+        root: Option<PathBuf>,
+    },
     /// List every command (task) the app knows
     #[command(name = "command:list")]
     CommandList {
@@ -111,6 +123,12 @@ fn main() -> anyhow::Result<()> {
             signature.as_deref(),
             dry_run,
         ),
+        Command::MakeMail {
+            name,
+            module,
+            dry_run,
+            root,
+        } => commands::make_mail(&commands::resolve_root(root)?, &name, &module, dry_run),
         Command::CommandList { root } => commands::command_list(&commands::resolve_root(root)?),
         Command::CommandRun {
             signature,

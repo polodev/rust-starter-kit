@@ -165,6 +165,12 @@ async fn login(
 
     let _ = ctx.cache.remove(&key).await;
     let token = session::create(&ctx.db, user.id, user_agent(&headers)).await?;
+    loco_activity_log::activity(&ctx.db)
+        .in_log("auth")
+        .caused_by("user", user.id)
+        .event("login")
+        .log_quietly("Logged in")
+        .await;
     Ok(redirect_with_session(&next, &token, secure_cookies(&ctx)))
 }
 
@@ -275,6 +281,13 @@ async fn register(
     };
 
     let token = session::create(&ctx.db, user.id, user_agent(&headers)).await?;
+    loco_activity_log::activity(&ctx.db)
+        .in_log("auth")
+        .caused_by("user", user.id)
+        .performed_on("user", user.id)
+        .event("registered")
+        .log_quietly("Registered an account")
+        .await;
     Ok(redirect_with_session("/", &token, secure_cookies(&ctx)))
 }
 
@@ -287,6 +300,14 @@ async fn logout(State(ctx): State<AppContext>, headers: HeaderMap) -> Result<Res
         .get(header::COOKIE)
         .and_then(|value| value.to_str().ok());
     if let Some(token) = session::token_from_cookie_header(cookie) {
+        if let Some((_, user)) = session::find(&ctx.db, token).await? {
+            loco_activity_log::activity(&ctx.db)
+                .in_log("auth")
+                .caused_by("user", user.id)
+                .event("logout")
+                .log_quietly("Logged out")
+                .await;
+        }
         session::delete_by_token(&ctx.db, token).await?;
     }
     Ok((

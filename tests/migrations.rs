@@ -130,6 +130,8 @@ fn tables_that_belong_together_are_created_in_one_file() {
         ],
         // a page and its translations
         vec!["pages", "page_translations"],
+        // tracked job history and the Laravel-style waiting and failed job tables
+        vec!["queue_jobs", "jobs", "failed_jobs"],
     ] {
         let files: std::collections::BTreeSet<_> = group
             .iter()

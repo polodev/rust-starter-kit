@@ -49,26 +49,22 @@ workers:
 
 # Mailer Configuration.
 mailer:
-  # Sending mail in development needs something listening on the port below.
-  # Run a local catcher — mailpit, MailHog or maildev all default to SMTP on
-  # 1025 with a web inbox on 8025 — e.g. `docker run -p 1025:1025 -p 8025:8025
-  # axllent/mailpit`, then read the mail at http://localhost:8025.
-  # Prefer not to run one? Set `stub: true` here (as `config/test.yaml` does)
-  # to record deliveries in memory instead of sending them.
-  # SMTP mailer configuration.
+  # Loco's own mailer (used by src/mailers, for example the welcome email). Development defaults to a local
+  # catcher such as Mailpit (SMTP on 1025, inbox on http://localhost:8025):
+  #   docker run -p 1025:1025 -p 8025:8025 axllent/mailpit
+  # Prefer not to run one? Set `stub: true` here (as `config/test.yaml` does) to record deliveries in memory.
+  # To send through Amazon SES instead, set in .env: MAILER_HOST=email-smtp.<region>.amazonaws.com, MAILER_PORT=587,
+  # MAILER_SECURE=true, and uncomment `auth` below. Get the user and password with
+  # `cargo run -- task mail:ses-smtp-password`. (The `mail` module has its own, separate settings under settings.mail.)
   smtp:
-    # Enable/Disable smtp mailer.
     enable: true
-    # SMTP server host. e.x localhost, smtp.gmail.com
     host: <%= get_env(name="MAILER_HOST", default="localhost") %>
-    # SMTP server port
-    port: 1025
-    # Use secure connection (SSL/TLS).
-    secure: false
+    port: <%= get_env(name="MAILER_PORT", default="1025") %>
+    # true = STARTTLS (what SES on port 587 needs), false = no encryption (local catcher)
+    secure: <%= get_env(name="MAILER_SECURE", default="false") %>
     # auth:
-    #   user:
-    #   password:
-    # Override the SMTP hello name (default is the machine's hostname)
+    #   user: <%= get_env(name="MAILER_USER", default="") %>
+    #   password: <%= get_env(name="MAILER_PASSWORD", default="") %>
     # hello_name:
 
 # Initializers Configuration
@@ -123,3 +119,80 @@ auth:
 cache:
   kind: InMem
   max_capacity: 1000
+
+settings:
+  # Database backups (module db-backup): to the private R2 bucket, separate from the site's own storage.
+  # Switch on with DB_BACKUP_ENABLED=true in .env. Run: cargo run -- task backup:run only-db:true
+  db_backup:
+    enabled: <%= get_env(name="DB_BACKUP_ENABLED", default="false") %>
+    name: <%= get_env(name="BACKUP_NAME", default="rust-starter") %>
+    destinations: [offsite]
+    disks:
+      offsite:
+        driver: s3
+        bucket: <%= get_env(name="BACKUP_BUCKET", default="") %>
+        region: auto
+        endpoint: <%= get_env(name="BACKUP_ENDPOINT", default="") %>
+        access_key_id: <%= get_env(name="BACKUP_ACCESS_KEY_ID", default="") %>
+        secret_access_key: <%= get_env(name="BACKUP_SECRET_ACCESS_KEY", default="") %>
+        prefix: <%= get_env(name="BACKUP_PREFIX", default="db-backups") %>
+    retention:
+      keep_all_days: 7
+      keep_daily_days: 16
+      keep_weekly_weeks: 8
+      keep_monthly_months: 4
+      keep_yearly_years: 2
+    monitor_max_age_days: 1
+  mail:
+    # Sending email (module mail). driver: ses | smtp | log | capture. `log` writes .eml files and sends nothing.
+    driver: "<%= get_env(name="MAIL_DRIVER", default="log") %>"
+    from_address: "<%= get_env(name="MAIL_FROM_ADDRESS", default="noreply@example.com") %>"
+    from_name: "<%= get_env(name="MAIL_FROM_NAME", default="Rust Starter") %>"
+    log_path: storage/mail
+    ses:
+      region: "<%= get_env(name="AWS_SES_DEFAULT_REGION", default="us-east-1") %>"
+      access_key_id: "<%= get_env(name="AWS_SES_ACCESS_KEY_ID", default="") %>"
+      secret_access_key: "<%= get_env(name="AWS_SES_SECRET_ACCESS_KEY", default="") %>"
+      configuration_set: "<%= get_env(name="AWS_SES_CONFIGURATION_SET", default="") %>"
+    smtp:
+      host: "<%= get_env(name="MAIL_SMTP_HOST", default="localhost") %>"
+      port: <%= get_env(name="MAIL_SMTP_PORT", default="1025") %>
+      username: "<%= get_env(name="MAIL_SMTP_USERNAME", default="") %>"
+      password: "<%= get_env(name="MAIL_SMTP_PASSWORD", default="") %>"
+      encryption: "<%= get_env(name="MAIL_SMTP_ENCRYPTION", default="none") %>"
+  ai:
+    # AI providers (module ai-service). Everything comes from .env; a provider with no key is simply not available.
+    default_provider: "<%= get_env(name="AI_DEFAULT_PROVIDER", default="") %>"
+    default_model: "<%= get_env(name="AI_DEFAULT_MODEL", default="") %>"
+    max_tokens: "<%= get_env(name="AI_MAX_TOKENS", default="2048") %>"
+    timeout_seconds: "<%= get_env(name="AI_TIMEOUT_SECONDS", default="60") %>"
+    # false keeps prompts and replies out of the AI API logs (sizes, status and cost are still stored).
+    log_content: "<%= get_env(name="AI_LOG_CONTENT", default="true") %>"
+    claude:
+      api_key: "<%= get_env(name="ANTHROPIC_API_KEY", default="") %>"
+      model: "<%= get_env(name="CLAUDE_MODEL", default="") %>"
+      input_per_million: "<%= get_env(name="CLAUDE_INPUT_USD_PER_MILLION_TOKENS", default="") %>"
+      output_per_million: "<%= get_env(name="CLAUDE_OUTPUT_USD_PER_MILLION_TOKENS", default="") %>"
+    openai:
+      api_key: "<%= get_env(name="OPENAI_API_KEY", default="") %>"
+      model: "<%= get_env(name="OPENAI_MODEL", default="") %>"
+      input_per_million: "<%= get_env(name="OPENAI_INPUT_USD_PER_MILLION_TOKENS", default="") %>"
+      output_per_million: "<%= get_env(name="OPENAI_OUTPUT_USD_PER_MILLION_TOKENS", default="") %>"
+    gemini:
+      api_key: "<%= get_env(name="GEMINI_API_KEY", default="") %>"
+      model: "<%= get_env(name="GEMINI_MODEL", default="") %>"
+      input_per_million: "<%= get_env(name="GEMINI_INPUT_USD_PER_MILLION_TOKENS", default="") %>"
+      output_per_million: "<%= get_env(name="GEMINI_OUTPUT_USD_PER_MILLION_TOKENS", default="") %>"
+    image:
+      model: "<%= get_env(name="OPENAI_IMAGE_MODEL", default="") %>"
+      size: "<%= get_env(name="OPENAI_IMAGE_SIZE", default="1024x1024") %>"
+      quality: "<%= get_env(name="OPENAI_IMAGE_QUALITY", default="") %>"
+      output_format: "<%= get_env(name="OPENAI_IMAGE_OUTPUT_FORMAT", default="") %>"
+  media:
+    # Uploaded files (module media). Where they live is chosen in .env: MEDIA_STORAGE=local (default) or r2.
+    # With r2, MEDIA_DISK is the name written to the media table's `disk` column and MEDIA_PREFIX a folder in the bucket.
+    # R2_PUBLIC_URL (the bucket's public address) makes public files load straight from R2 instead of through this app.
+    disk: "<%= get_env(name="MEDIA_DISK", default="default") %>"
+    prefix: "<%= get_env(name="MEDIA_PREFIX", default="") %>"
+    disk_urls:
+      "<%= get_env(name="MEDIA_DISK", default="default") %>": "<%= get_env(name="R2_PUBLIC_URL", default="") %>"

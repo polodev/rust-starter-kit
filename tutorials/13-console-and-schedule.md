@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 13 of 21** | [Index](00-index.md) | [Previous: 12 Cheat sheet and what to build next](12-cheatsheet.md) | [Next: 14 Login, register and sessions (`auth` module)](14-auth-and-sessions.md)
+**Tutorial 13 of 25** | [Index](00-index.md) | [Previous: 12 Cheat sheet and what to build next](12-cheatsheet.md) | [Next: 14 Login, register and sessions (`auth` module)](14-auth-and-sessions.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -25,6 +25,10 @@
 19. [Components and the contact form](19-components-and-contact-form.md)  
 20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
 21. [Conventions](21-conventions.md)  
+22. [Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md)  
+23. [PDF and email](23-pdf-and-email.md)  
+24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
+25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
 
 </details>
 <!-- nav:end -->
@@ -120,6 +124,21 @@ At boot, `App::load_config` merges every module's jobs into the scheduler config
 cargo modular schedule:list      # show all jobs and their cron
 cargo modular schedule:work      # run the scheduler in the foreground
 ```
+
+## Commands in this kit
+
+| Command | What it does | Scheduled |
+|---|---|---|
+| `backup:run only-db:true` | database dump to the backup bucket (tutorial 22) | daily 01:30 |
+| `backup:list`, `backup:clean`, `backup:monitor` | list, retention, health check | clean 01:00, monitor 03:00 |
+| `activitylog:clean days:90 log:users` | delete old activity-log entries | daily 03:20 |
+| `queue-watcher:mark-stale`, `queue-watcher:purge` | flag hung jobs, remove old history | hourly, daily 03:40 |
+| `auth:prune-sessions`, `auth-api:prune-tokens` | remove expired sessions and tokens | hourly, daily 03:30 |
+| `pages:check-translations` | pages missing their English text (`strict:true` fails) | daily 03:00 |
+| `mail:send-test`, `mail:send-invoice`, `mail:ses-smtp-password`, `pdf:sample` | email and PDF samples (tutorials 23 and 24) | |
+| `roles:sync`, `media:import`, `user:create`, `user:delete`, `tinker`, `tinker:eloquent` | on demand | |
+
+Scheduled jobs that need setup (backups) do nothing, and say so, until their settings exist.
 
 ## Tinker
 

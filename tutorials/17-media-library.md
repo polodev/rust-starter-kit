@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 17 of 21** | [Index](00-index.md) | [Previous: 16 The admin dashboard (`admin-layout` module)](16-admin-dashboard.md) | [Next: 18 JSON API and Google login](18-json-api-and-google-login.md)
+**Tutorial 17 of 25** | [Index](00-index.md) | [Previous: 16 The admin dashboard (`admin-layout` module)](16-admin-dashboard.md) | [Next: 18 JSON API and Google login](18-json-api-and-google-login.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -25,6 +25,10 @@
 19. [Components and the contact form](19-components-and-contact-form.md)  
 20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
 21. [Conventions](21-conventions.md)  
+22. [Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md)  
+23. [PDF and email](23-pdf-and-email.md)  
+24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
+25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
 
 </details>
 <!-- nav:end -->
@@ -78,7 +82,10 @@ In a handler: `let form = module_media::read_form(multipart, "image").await; let
 - **Storage:** Loco's storage (`storage/uploads/` in development; S3 or R2 by config). A file is at `{id}/{file_name}`, with `settings.media.prefix` in front when set.
 - **Table:** `media` with Spatie's columns (`model_type`, `model_id` as text, `uuid`, `collection_name`, `disk`, `size`, `custom_properties`, ...).
 - **URL:** `GET /media/{id}/{file_name}`. **Public** collections (`.public()`) go to everyone; the default is **private**: only the owner and staff with `media.view`, everyone else gets 404.
-- **CDN:** set `settings.media.disk_urls.<disk>` and public files redirect to `{url}/{path}` so the bytes skip this app.
+- **Cloudflare R2:** set `MEDIA_STORAGE=r2`, `MEDIA_DISK=r2-public` and `MEDIA_PREFIX=<folder>` in `.env` (the `R2_*` keys, endpoint and `R2_PUBLIC_BUCKET` are already there) and restart: uploads go to the public bucket instead of `storage/uploads`. Files uploaded earlier are copied with `cargo run -- task media:move-local-uploads` (try `dry-run:true` first; the local copies are kept). With the bucket's public address in `R2_PUBLIC_URL` (the `pub-....r2.dev` link from Cloudflare, bucket settings, Public access), public files load straight from R2; without it they are served through this app at `/media/{id}/{file_name}`.
+- **Warning:** every collection, private ones too, goes to this one bucket. Once its public access is on, anyone who guesses `{prefix}/{id}/{file_name}` can read the file, so only upload public collections until private ones have their own private bucket. The r2.dev address is rate-limited and meant for development; use a custom domain in production.
+- **Warning:** today every collection, private ones too, goes to this one bucket. That is safe while the bucket's public access is off. Do not switch public access on until private collections have their own private bucket.
+- **Public address:** set `R2_PUBLIC_URL` (the bucket's public domain) or `settings.media.disk_urls.<disk>`, and public files redirect to `{url}/{path}` so the bytes skip this app.
 
 ```yaml
 settings:

@@ -27,6 +27,10 @@ Start here. Every page has an **Index** link at the top and bottom, plus Previou
 | 19 | [Components and the contact form](19-components-and-contact-form.md) | Update a form without a reload, honeypot, admin modal |
 | 20 | [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md) | SQL and Eloquent consoles, Laravel gotchas |
 | 21 | [Conventions](21-conventions.md) | The rules of this starter pack, short version |
+| 22 | [Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md) | Audit trail, job monitor, `backup:run --only-db` |
+| 23 | [PDF and email](23-pdf-and-email.md) | Headless Chrome PDFs, email through Amazon SES, `make:mail` |
+| 24 | [Email and PDF step by step](24-email-and-pdf-step-by-step.md) | Loco's mailer and our `mail` module side by side, an invoice PDF by email, SES setup |
+| 25 | [AI service](25-ai-service.md) | One wrapper for Claude, OpenAI and Gemini, photos to JSON, image generation, AI API logs |
 
 ## Pick a path
 
@@ -43,6 +47,9 @@ Start here. Every page has an **Index** link at the top and bottom, plus Previou
 | Build a JSON API or Google sign-in | [18](18-json-api-and-google-login.md) |
 | Add a form that updates without a reload | [19](19-components-and-contact-form.md) |
 | Change the database from a prompt, or share it with Laravel | [20](20-tinker-and-laravel-database.md) |
+| See who did what, watch jobs, back up the database | [22](22-activity-log-queue-and-backups.md) |
+| Call Claude, OpenAI or Gemini, read a photo into data, make an image | [25](25-ai-service.md) |
+| Make a PDF, send an email with SES, `make:mail` | [23](23-pdf-and-email.md), step by step: [24](24-email-and-pdf-step-by-step.md) |
 | Know the rules before changing code | [21](21-conventions.md), `../docs/CONVENTIONS.md` |
 | Look something up fast | [12](12-cheatsheet.md) |
 

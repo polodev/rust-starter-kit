@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 5 of 21** | [Index](00-index.md) | [Previous: 4 Project structure](04-project-structure.md) | [Next: 6 Routes, controllers and views](06-routes-controllers-views.md)
+**Tutorial 5 of 25** | [Index](00-index.md) | [Previous: 4 Project structure](04-project-structure.md) | [Next: 6 Routes, controllers and views](06-routes-controllers-views.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -25,6 +25,10 @@
 19. [Components and the contact form](19-components-and-contact-form.md)  
 20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
 21. [Conventions](21-conventions.md)  
+22. [Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md)  
+23. [PDF and email](23-pdf-and-email.md)  
+24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
+25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
 
 </details>
 <!-- nav:end -->
@@ -110,6 +114,12 @@ Module templates share one namespace, so prefix them with the module or area (`p
 ## Gotcha
 
 If `cargo` says `failed to read modules/*/Cargo.toml`, the workspace lists `modules/*` but no module exists yet. Create one with `cargo modular make:module` (it adds the glob only when needed).
+
+`cargo modular make:mail InvoiceReady --module=billing` creates a mail class with HTML and text templates in a module, like Laravel's `make:mail` (see [23](23-pdf-and-email.md)).
+
+## Shared packages
+
+Code that several modules need, but that is not a feature, lives in `packages/`. `loco-activity-log` is one: it writes activity-log entries, and `pages`, `accounts`, `auth` and others depend on it. It is a package (not part of the `activity-log` module) so that a module low in the dependency graph can log without depending on the admin screens, which would create a cycle.
 
 <!-- foot:start -->
 ---

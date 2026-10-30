@@ -1,0 +1,11 @@
+Hello {{ customer }},
+
+Your invoice {{ number }} is attached as a PDF.
+
+Amount due: {{ currency }} {{ total }}
+Due date:   {{ due }}
+
+Thank you for your business.
+If you have any questions, just reply to this email.
+
+{{ seller }}

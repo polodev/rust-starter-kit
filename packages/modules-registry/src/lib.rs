@@ -4,12 +4,18 @@ use loco_modular::Module;
 pub fn all() -> Vec<Box<dyn Module>> {
     vec![
         Box::new(module_accounts::AccountsModule),
+        Box::new(module_activity_log::ActivityLogModule),
         Box::new(module_admin_layout::AdminLayoutModule),
+        Box::new(module_ai_service::AiServiceModule),
         Box::new(module_auth::AuthModule),
         Box::new(module_auth_api::AuthApiModule),
         Box::new(module_contact::ContactModule),
+        Box::new(module_db_backup::DbBackupModule),
+        Box::new(module_mail::MailModule),
         Box::new(module_media::MediaModule),
         Box::new(module_pages::PagesModule),
+        Box::new(module_pdf::PdfModule),
+        Box::new(module_queue_watcher::QueueWatcherModule),
         Box::new(module_role_permission::RolePermissionModule),
         Box::new(module_rust_eloquent_tinker::RustEloquentTinkerModule),
         Box::new(module_site_layout::SiteLayoutModule),

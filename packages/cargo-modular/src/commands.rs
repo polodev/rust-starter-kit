@@ -281,6 +281,120 @@ pub fn make_command(
     Ok(())
 }
 
+/// Creates a mail class and its templates in a module, like Laravel's `make:mail`:
+/// `src/mails/<name>.rs`, `templates/mails/<name>.html` and `<name>.txt`. The module gets a `mails` folder,
+/// a `module-mail` dependency and the new mail registered, so it can be built and sent right away.
+pub fn make_mail(root: &Path, raw: &str, module: &str, dry_run: bool) -> Result<()> {
+    let names = normalize_name(raw)?;
+    let module = normalize_name(module)?;
+    let module_dir = root.join("modules").join(&module.kebab);
+    if !module_dir.join("Cargo.toml").is_file() {
+        bail!(
+            "module `{}` does not exist; create it with `cargo modular make:module {}`",
+            module.kebab,
+            module.kebab
+        );
+    }
+    let mail_file = module_dir
+        .join("src")
+        .join("mails")
+        .join(format!("{}.rs", names.snake));
+    let mails_mod = module_dir.join("src").join("mails").join("mod.rs");
+    let html_file = module_dir
+        .join("templates")
+        .join("mails")
+        .join(format!("{}.html", names.snake));
+    let text_file = module_dir
+        .join("templates")
+        .join("mails")
+        .join(format!("{}.txt", names.snake));
+    for file in [&mail_file, &html_file, &text_file] {
+        if file.exists() {
+            bail!("{} already exists", file.display());
+        }
+    }
+    let lib_file = module_dir.join("src").join("lib.rs");
+    let cargo_file = module_dir.join("Cargo.toml");
+    let lib = fs::read_to_string(&lib_file)
+        .with_context(|| format!("{} not found", lib_file.display()))?;
+    let cargo = fs::read_to_string(&cargo_file)?;
+    let uses_mail_crate = module.kebab != "mail";
+
+    for file in [&mail_file, &html_file, &text_file] {
+        println!(
+            "{} {}",
+            if dry_run { "would create" } else { "create" },
+            file.display()
+        );
+    }
+    println!(
+        "{} {} (register the mail)",
+        if dry_run { "would update" } else { "update" },
+        mails_mod.display()
+    );
+    if dry_run {
+        return Ok(());
+    }
+
+    fs::create_dir_all(mail_file.parent().expect("has a parent"))?;
+    fs::create_dir_all(html_file.parent().expect("has a parent"))?;
+    let import = if uses_mail_crate {
+        "use module_mail::Mail;"
+    } else {
+        "use crate::Mail;"
+    };
+    fs::write(
+        &mail_file,
+        stubs::MAIL
+            .replace("{{mail_import}}", import)
+            .replace("{{pascal}}", &names.pascal)
+            .replace("{{snake}}", &names.snake),
+    )?;
+    fs::write(
+        &html_file,
+        stubs::MAIL_HTML.replace("{{pascal}}", &names.pascal),
+    )?;
+    fs::write(
+        &text_file,
+        stubs::MAIL_TXT.replace("{{pascal}}", &names.pascal),
+    )?;
+
+    const MARKER: &str = "// mails-inject (do not remove)";
+    let registry = fs::read_to_string(&mails_mod).unwrap_or_else(|_| stubs::MAILS_MOD.to_string());
+    if registry.contains(&format!("pub mod {};", names.snake)) {
+        bail!("a mail named `{}` is already registered", names.snake);
+    }
+    fs::write(
+        &mails_mod,
+        registry.replace(MARKER, &format!("pub mod {};\n{MARKER}", names.snake)),
+    )?;
+
+    if !lib.contains("mod mails;") {
+        let updated = lib.replacen("mod commands;", "mod commands;\npub mod mails;", 1);
+        if updated == lib {
+            println!(
+                "add `pub mod mails;` to {} yourself (no `mod commands;` line found)",
+                lib_file.display()
+            );
+        } else {
+            fs::write(&lib_file, updated)?;
+        }
+    }
+    if uses_mail_crate && !cargo.contains("module-mail") {
+        let updated = format!(
+            "{}\nmodule-mail = {{ path = \"../mail\" }}\n",
+            cargo.trim_end()
+        );
+        fs::write(&cargo_file, updated)?;
+    }
+    println!(
+        "\nbuild it with `{}::{}{{ to, name }}.build()?` and send it with `module_mail::send(&ctx, mail).await?`",
+        "mails::".to_string() + &names.snake,
+        names.pascal
+    );
+    Ok(())
+}
+
 /// Module directories that contain a Cargo.toml, sorted.
 pub fn discover(root: &Path) -> Result<Vec<String>> {
     let dir = root.join("modules");
@@ -474,5 +588,72 @@ mod tests {
         let registry =
             fs::read_to_string(dir.path().join("packages/modules-registry/src/lib.rs")).unwrap();
         assert!(registry.find("AlphaBetaModule").unwrap() < registry.find("ZetaModule").unwrap());
+    }
+
+    #[test]
+    fn make_mail_creates_the_class_templates_and_wiring() {
+        let dir = project();
+        make_module(dir.path(), "billing", false).unwrap();
+        make_mail(dir.path(), "Invoice Ready", "billing", false).unwrap();
+
+        let class = fs::read_to_string(
+            dir.path()
+                .join("modules/billing/src/mails/invoice_ready.rs"),
+        )
+        .unwrap();
+        assert!(class.contains("pub struct InvoiceReady"));
+        assert!(class.contains("use module_mail::Mail;"));
+        assert!(class.contains("templates/mails/invoice_ready.html"));
+        assert!(dir
+            .path()
+            .join("modules/billing/templates/mails/invoice_ready.html")
+            .is_file());
+        assert!(dir
+            .path()
+            .join("modules/billing/templates/mails/invoice_ready.txt")
+            .is_file());
+
+        let registry =
+            fs::read_to_string(dir.path().join("modules/billing/src/mails/mod.rs")).unwrap();
+        assert!(registry.contains("pub mod invoice_ready;") && registry.contains("mails-inject"));
+        let lib = fs::read_to_string(dir.path().join("modules/billing/src/lib.rs")).unwrap();
+        assert!(lib.contains("pub mod mails;"));
+        let cargo = fs::read_to_string(dir.path().join("modules/billing/Cargo.toml")).unwrap();
+        assert!(cargo.contains("module-mail = { path = \"../mail\" }"));
+
+        // A second mail reuses the folder; the same name is refused; an unknown module is refused.
+        make_mail(dir.path(), "welcome", "billing", false).unwrap();
+        let registry =
+            fs::read_to_string(dir.path().join("modules/billing/src/mails/mod.rs")).unwrap();
+        assert!(
+            registry.contains("pub mod welcome;") && registry.contains("pub mod invoice_ready;")
+        );
+        assert!(make_mail(dir.path(), "welcome", "billing", false).is_err());
+        assert!(make_mail(dir.path(), "x", "missing", false).is_err());
+        let again = fs::read_to_string(dir.path().join("modules/billing/Cargo.toml")).unwrap();
+        assert_eq!(
+            again.matches("module-mail").count(),
+            1,
+            "the dependency is added once"
+        );
+    }
+
+    #[test]
+    fn make_mail_inside_the_mail_module_uses_the_local_type_and_dry_run_writes_nothing() {
+        let dir = project();
+        make_module(dir.path(), "mail", false).unwrap();
+        make_mail(dir.path(), "digest", "mail", false).unwrap();
+        let class =
+            fs::read_to_string(dir.path().join("modules/mail/src/mails/digest.rs")).unwrap();
+        assert!(class.contains("use crate::Mail;"));
+        let cargo = fs::read_to_string(dir.path().join("modules/mail/Cargo.toml")).unwrap();
+        assert!(
+            !cargo.contains("module-mail = {"),
+            "the mail module does not depend on itself"
+        );
+
+        make_module(dir.path(), "shop", false).unwrap();
+        make_mail(dir.path(), "receipt", "shop", true).unwrap();
+        assert!(!dir.path().join("modules/shop/src/mails").exists());
     }
 }

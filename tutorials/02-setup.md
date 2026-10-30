@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 2 of 21** | [Index](00-index.md) | [Previous: 1 Introduction](01-introduction.md) | [Next: 3 Rust essentials](03-rust-essentials.md)
+**Tutorial 2 of 25** | [Index](00-index.md) | [Previous: 1 Introduction](01-introduction.md) | [Next: 3 Rust essentials](03-rust-essentials.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -25,6 +25,10 @@
 19. [Components and the contact form](19-components-and-contact-form.md)  
 20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
 21. [Conventions](21-conventions.md)  
+22. [Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md)  
+23. [PDF and email](23-pdf-and-email.md)  
+24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
+25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
 
 </details>
 <!-- nav:end -->
@@ -59,13 +63,17 @@ mysql -uroot -e "CREATE DATABASE rust_starter_test CHARACTER SET utf8mb4 COLLATE
 cp .env.example .env
 ```
 
-`.env` holds the database URLs and the R2 storage keys. It is ignored by git. Never commit it.
+To start over later: `cargo run -- db reset`, then `cargo run -- db seed`.
+
+`.env` holds the database URLs, the R2 storage keys and the backup settings. The app reads it at startup (variables already set in the real environment win). It is ignored by git. Never commit it.
 
 | Variable | Used for |
 |---|---|
 | `DATABASE_URL` | Development database (`rust_starter`) |
 | `TEST_DATABASE_URL` | Test database. The name **must** end in `_test` |
-| `R2_*` | Cloudflare R2 storage |
+| `R2_*` | Cloudflare R2 storage (public and private buckets) |
+| `DB_BACKUP_ENABLED`, `BACKUP_*` | Database backups to a bucket of their own (module `db-backup`) |
+| `MAIL_*`, `AWS_SES_*` | Email: `MAIL_DRIVER=log` (default, sends nothing), `ses` or `smtp` (module `mail`) |
 
 ## Get Tailwind
 

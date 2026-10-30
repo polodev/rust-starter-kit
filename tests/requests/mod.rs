@@ -1,4 +1,6 @@
+mod activity_log;
 mod admin_users;
+mod ai_api_logs;
 mod api_auth;
 mod auth;
 mod contact;
@@ -7,5 +9,6 @@ mod media_accounts;
 mod pages;
 mod pages_admin;
 mod prepare_data;
+mod queue_watcher;
 mod social_login;
 mod web_auth;

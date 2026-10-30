@@ -81,13 +81,21 @@ async fn find_page(ctx: &AppContext, slug: &str, locale: &str) -> Result<Option<
     let feature_image = page
         .get_first_media(ctx, FEATURE_IMAGE)
         .await?
-        .map(|media| FeatureImage {
-            absolute_url: format!("{}{}", ctx.config.server.full_url(), media.url()),
-            alt: media
-                .custom_property("alt")
-                .and_then(|alt| alt.as_str().map(str::to_owned))
-                .unwrap_or_default(),
-            url: media.url(),
+        .map(|media| {
+            let url = module_media::public_url(ctx, &media);
+            let absolute_url = if url.starts_with("http") {
+                url.clone()
+            } else {
+                format!("{}{}", ctx.config.server.full_url(), url)
+            };
+            FeatureImage {
+                absolute_url,
+                alt: media
+                    .custom_property("alt")
+                    .and_then(|alt| alt.as_str().map(str::to_owned))
+                    .unwrap_or_default(),
+                url,
+            }
         });
     Ok(Some(PageView {
         id: page.id,

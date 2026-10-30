@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 15 of 21** | [Index](00-index.md) | [Previous: 14 Login, register and sessions (`auth` module)](14-auth-and-sessions.md) | [Next: 16 The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)
+**Tutorial 15 of 25** | [Index](00-index.md) | [Previous: 14 Login, register and sessions (`auth` module)](14-auth-and-sessions.md) | [Next: 16 The admin dashboard (`admin-layout` module)](16-admin-dashboard.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -25,6 +25,10 @@
 19. [Components and the contact form](19-components-and-contact-form.md)  
 20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
 21. [Conventions](21-conventions.md)  
+22. [Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md)  
+23. [PDF and email](23-pdf-and-email.md)  
+24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
+25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
 
 </details>
 <!-- nav:end -->
@@ -46,8 +50,8 @@ new_employee < business_development < marketing < employee < admin < developer
 | New Employee | `dashboard.view` (the admin dashboard) |
 | Business Development | `users.view`, `pages.view` |
 | Marketing | `pages.manage`, `media.view` |
-| Employee | `settings.view`, `logs.view`, `queue.view` |
-| Admin | `dashboard.manage`, `users.manage`, `media.manage`, `settings.manage`, `logs.manage`, `queue.manage` |
+| Employee | `settings.view`, `activity_logs.view`, `ai_api_logs.view`, `queue.view` |
+| Admin | `dashboard.manage`, `users.manage`, `media.manage`, `settings.manage`, `activity_logs.manage`, `ai_api_logs.manage`, `queue.manage` |
 | Developer | **everything** (`*`), including the role-permission manager: `roles.view`, `roles.assign`, `roles.sync` |
 
 The role-permission manager belongs to the developer only. Admins cannot see or change roles.
@@ -88,6 +92,8 @@ user.access.has_role("developer")
 ```
 
 The "Admin dashboard" link in the header appears for anyone who `can("dashboard.view")`.
+
+Every role or permission change made in the admin is written to the [activity log](22-activity-log-queue-and-backups.md) with the role before and after.
 
 <!-- foot:start -->
 ---

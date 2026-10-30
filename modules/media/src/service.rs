@@ -58,6 +58,17 @@ pub fn direct_url(ctx: &AppContext, item: &media::Model) -> Option<String> {
     (!base.is_empty()).then(|| format!("{base}/{path}"))
 }
 
+/// The address to put in a page: a public file's own address on its disk (R2, a CDN) when one is set, otherwise
+/// the address served by this app. Private files always use this app, which checks who may see them.
+pub fn public_url(ctx: &AppContext, item: &media::Model) -> String {
+    if item.is_public() {
+        if let Some(url) = direct_url(ctx, item) {
+            return url;
+        }
+    }
+    item.url()
+}
+
 /// Builder for adding one file to a model, like Spatie's `FileAdder`.
 pub struct FileAdder<'a> {
     ctx: &'a AppContext,

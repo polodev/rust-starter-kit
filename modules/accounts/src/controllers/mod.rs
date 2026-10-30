@@ -105,9 +105,19 @@ async fn update_profile(
     let Some(row) = users::Entity::find_by_id(user.id).one(&ctx.db).await? else {
         return Err(Error::NotFound);
     };
+    let old = json!({ "name": row.name });
+    let new = json!({ "name": name });
     let mut active: users::ActiveModel = row.into();
     active.name = Set(name);
     active.update(&ctx.db).await?;
+    loco_activity_log::activity(&ctx.db)
+        .in_log("account")
+        .caused_by("user", user.id)
+        .performed_on("user", user.id)
+        .event("updated")
+        .with_changes(loco_activity_log::changes(&old, &new, &[]))
+        .log_quietly("Changed their name")
+        .await;
     Ok(Redirect::to("/account/profile?status=profile-saved").into_response())
 }
 
@@ -170,6 +180,13 @@ async fn update_password(
     let mut active: users::ActiveModel = row.into();
     active.password = Set(hash::hash_password(&form.password)?);
     active.update(&ctx.db).await?;
+    loco_activity_log::activity(&ctx.db)
+        .in_log("account")
+        .caused_by("user", user.id)
+        .performed_on("user", user.id)
+        .event("password_changed")
+        .log_quietly("Changed their password")
+        .await;
     // Anyone who knew the old password loses their session; this device stays signed in.
     session::delete_others(&ctx.db, user.id, user.session_id).await?;
     Ok(Redirect::to("/account/password?status=password-changed").into_response())

@@ -225,7 +225,7 @@ async fn library(
             let mime = item.mime_type.clone().unwrap_or_default();
             let is_library = item.model_type == LIBRARY_OWNER_TYPE;
             json!({
-                "name": item.name, "file_name": item.file_name, "owner_type": if is_library { "loose file, no record".to_string() } else { item.model_type.clone() }, "url": item.url(), "mime": mime, "kb": u64::from(item.size).div_ceil(1024),
+                "name": item.name, "file_name": item.file_name, "owner_type": if is_library { "loose file, no record".to_string() } else { item.model_type.clone() }, "url": crate::service::public_url(&ctx, item), "mime": mime, "kb": u64::from(item.size).div_ceil(1024),
                 "is_image": mime.starts_with("image/"), "collection": item.collection_name,
                 "public": item.is_public(), "added": item.created_at.map(|at| at.format("%Y-%m-%d").to_string()).unwrap_or_default(),
                 "is_library": is_library, "id": item.id,

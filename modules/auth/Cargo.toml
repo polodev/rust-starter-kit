@@ -19,3 +19,4 @@ sha2 = { workspace = true }
 uuid = { workspace = true }
 module-site-layout = { path = "../site-layout" }
 module-role-permission = { path = "../role-permission" }
+loco-activity-log = { path = "../../packages/loco-activity-log" }

@@ -1,0 +1,14 @@
+[package]
+name = "loco-activity-log"
+version = "0.1.0"
+edition = "2021"
+description = "Activity log for Loco apps, compatible with the Spatie laravel-activitylog table"
+publish = false
+
+[dependencies]
+sea-orm = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+serde = { workspace = true }

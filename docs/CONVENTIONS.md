@@ -11,21 +11,22 @@ meant to stay compatible with Laravel apps (see [Database](#database)).
 ## Contents
 
 1. [The workflow for any change](#the-workflow-for-any-change)
-2. [Modules](#modules)
-3. [Routes and URLs](#routes-and-urls)
-4. [Controllers and models](#controllers-and-models)
-5. [Permissions and roles](#permissions-and-roles)
-6. [Admin screens](#admin-screens)
-7. [Public pages, templates and translations](#public-pages-templates-and-translations)
-8. [Forms, components and modals](#forms-components-and-modals)
-9. [JSON API](#json-api)
-10. [Database](#database)
-11. [Media library](#media-library)
-12. [Security](#security)
-13. [Console commands and the scheduler](#console-commands-and-the-scheduler)
-14. [Tests](#tests)
-15. [Documentation and git](#documentation-and-git)
-16. [Checklists](#checklists)
+2. [Names: long, full and specific](#names-long-full-and-specific)
+3. [Modules](#modules)
+4. [Routes and URLs](#routes-and-urls)
+5. [Controllers and models](#controllers-and-models)
+6. [Permissions and roles](#permissions-and-roles)
+7. [Admin screens](#admin-screens)
+8. [Public pages, templates and translations](#public-pages-templates-and-translations)
+9. [Forms, components and modals](#forms-components-and-modals)
+10. [JSON API](#json-api)
+11. [Database](#database)
+12. [Media library](#media-library)
+13. [Security](#security)
+14. [Console commands and the scheduler](#console-commands-and-the-scheduler)
+15. [Tests](#tests)
+16. [Documentation and git](#documentation-and-git)
+17. [Checklists](#checklists)
 
 ## The workflow for any change
 
@@ -44,6 +45,23 @@ cargo test --workspace
 
 Never run two `cargo test` commands at once: the tests share one test database and will collide. Run the
 suite and check the result before starting another run.
+
+## Names: long, full and specific
+
+As the project grows, short or general names make people unsure what a thing is. Name everything by exactly what
+it is, in full. This applies to code, routes, screens, permissions, tables, commands, templates and docs.
+
+- **Say the subject.** The history of calls to AI providers is "AI API logs" (`ai_api_logs`, `/admin/ai-api-logs`,
+  `ai_api_logs.view`), never "API logs" or just "logs". Other logs will arrive (error logs, activity logs, mail logs);
+  each keeps its own full name: `activity_logs.view`, not `logs.view`.
+- **No abbreviations or one-word stand-ins** for things with a longer name: `ai_api_log_row`, `AiApiLogFilters`,
+  `ai_api_logs_delete_selected`, not `row`, `Filters`, `delete`. Short names are fine only where the framework fixes
+  them (`ctx`, `v` for the view engine, `q` for the search parameter).
+- **Relations use the full name** of what they relate: `permission_roles`, `page_translations`, never `pr` or `trans`.
+- **Commands** say what they act on: `ai-service:purge-ai-api-logs`, not `ai:purge`.
+- **Screens** carry the subject in the menu label, the breadcrumb and the page title: "AI API logs", not "Logs".
+- **Templates** are `<subject>_<screen>.html`: `ai_api_logs_index.html`, `ai_api_log_show.html`.
+- **Permissions** are `<full_area>.view` and `<full_area>.manage`, one area per kind of thing.
 
 ## Modules
 
@@ -86,6 +104,12 @@ modules/<name>/
 | `pages` | bilingual static pages |
 | `media` | Spatie-compatible media library |
 | `contact` | contact form and admin inbox |
+| `activity-log` | admin screens and cleaning for the Spatie-compatible activity log |
+| `queue-watcher` | queue monitor: tracked job history, pending and failed jobs |
+| `db-backup` | database backups (`backup:run only-db:true`) to separately configured disks |
+| `pdf` | PDF generation with headless Chrome |
+| `ai-service` | the one wrapper for Claude, OpenAI and Gemini, OpenAI images, and the AI API logs |
+| `mail` | sending email (Amazon SES or SMTP), `mail_log`, `make:mail` |
 | `rust-eloquent-tinker` | development console (Eloquent and `DB` facade) |
 
 ## Routes and URLs
@@ -121,7 +145,7 @@ modules/<name>/
 
 - Roles and permissions are defined in code in `modules/role-permission/src/definitions.rs`, then copied into
   the database by `cargo run -- task roles:sync` (or the Sync button on `/admin/role-permissions`).
-- An area has two permissions: `<area>.view` and `<area>.manage` (`pages.view`, `contacts.manage`). Add the area
+- An area has two permissions: `<area>.view` and `<area>.manage` (`pages.view`, `contacts.manage`, `ai_api_logs.view`). Add the area
   to `AREAS`, then grant it to roles in `role_definitions()`. Roles inherit everything below them:
   `new_employee < business_development < marketing < employee < admin < developer`.
 - `roles.*` permissions come only from a role, never as a direct exception to a person.
@@ -228,7 +252,7 @@ modules/<name>/
   Everything else is private (owner and staff with `media.view`).
 - `model_type` is a short stable name (`user`, `page`, `library`) or whatever the Laravel app stored. Never store
   a path or URL in your own table; store the media relation and ask for the URL.
-- Files sit at `{id}/{file_name}`. Settings `settings.media.disk`, `prefix` and `disk_urls` are optional.
+- Files sit at `{id}/{file_name}`. Where they are kept is chosen in `.env`: `MEDIA_STORAGE=local` (`storage/uploads`) or `r2` (the `R2_PUBLIC_BUCKET`), with `MEDIA_DISK`, `MEDIA_PREFIX` and `R2_PUBLIC_URL`. Never put private collections in a bucket that has public access.
 - Upload limits: 10 MB per file (`DEFAULT_MAX_BYTES`) and the request body limit in `config/*.yaml`
   (`limit_payload`, 11 MB). Raise both together. A reverse proxy has its own limit too.
 - Details: `tutorials/17-media-library.md`.
@@ -245,6 +269,42 @@ modules/<name>/
 - Never invent security: use the existing extractors (`Auth`, `AdminPage`, `ApiAuth`) and helpers.
 - No secrets in git: `.env`, keys and tokens stay out. Scan the diff before you push.
 - Behind a proxy, rate limits read `X-Forwarded-For`; that header is only trustworthy if your proxy sets it.
+
+## Audit trail, background jobs and backups
+
+- **Log every admin change.** A handler that changes data writes an activity entry after the change, with
+  `loco_activity_log::activity(&ctx.db)...log_quietly("...")`: a log name for the area (`users`, `roles`, `pages`),
+  `caused_by("user", id)`, `performed_on(type, id)`, an `event`, and `changes(&old, &new, &[])` for what changed.
+  Never put passwords, tokens or other secrets in an entry. Use `log_quietly` in handlers so a log problem cannot
+  break the action.
+- **Packages hold shared writers.** `packages/loco-activity-log` is the writer, so a module low in the dependency
+  graph can log without depending on the admin module.
+- **Wrap worker bodies in `module_queue_watcher::track(...)`** so every run shows up in the queue monitor with its
+  status, time and error.
+- **Backups** are configured in `settings.db_backup`, separately from the website's `storage:`; keys come from the
+  environment with `get_env`, never from the file. Restore steps live in the module README.
+
+## Email and PDF
+
+- **Send mail only through `module_mail::send`** so every attempt is logged in `mail_log`. Build mails as classes with
+  `cargo modular make:mail Name --module=<module>` (HTML and text templates; never string-build HTML in a handler).
+- Mail text and subjects for people use Fluent keys like the rest of the site; never put secrets or tokens that are not
+  needed in an email.
+- `MAIL_DRIVER` is `log` (writes `.eml` files) everywhere except where real mail is meant; tests use `capture`. Do not
+  send real mail from tests.
+- **PDFs** are HTML and CSS rendered by `module_pdf::html_to_pdf` (Chrome). Page size and margins are CSS `@page`. Keep
+  money in minor units (integers), never floats.
+- A feature that emails a PDF renders the PDF first, attaches it, and writes an activity-log entry for the send.
+
+## AI providers
+
+- **Call AI only through `module_ai_service::AiService`** (`chat`, `json`, `generate_image`). Never call a provider from
+  another module: the wrapper picks the provider and model from `.env`, logs the call and estimates the cost.
+- Keys and model names live in `.env` only (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `*_MODEL`).
+- Give every call a `purpose("...")` so the AI API logs say what it was for.
+- Anything about a person (passports, IDs, faces, health) is `.sensitive()`: the prompt and reply are not stored.
+  Pictures are never stored.
+- Ask for JSON with `ai.json(...)` and check the fields you need; a model's reply is input, not truth.
 
 ## Console commands and the scheduler
 

@@ -523,7 +523,7 @@ async fn dashboard_hub_lists_every_permitted_sidebar_link_with_counts() {
             .text();
         assert!(html.contains(r#"data-testid="nav-hub""#) && html.contains("All navigation links"));
         assert!(
-            html.contains("4 sections") && html.contains("7 links"),
+            html.contains("4 sections") && html.contains("10 links"),
             "overview, content, people and access, system"
         );
         for label in [
@@ -534,6 +534,9 @@ async fn dashboard_hub_lists_every_permitted_sidebar_link_with_counts() {
             "Users",
             "Roles and permissions",
             "Scheduled jobs",
+            "Activity log",
+            "Queue monitor",
+            "AI API logs",
         ] {
             assert!(
                 html.contains(&format!(r#"data-nav-link data-label="{label}""#)),

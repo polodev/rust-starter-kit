@@ -151,7 +151,7 @@ async fn language_rows(ctx: &AppContext, page_id: i64) -> Result<Vec<Value>> {
 async fn feature_image_json(ctx: &AppContext, item: &pages::Model) -> Result<Option<Value>> {
     Ok(item.get_first_media(ctx, FEATURE_IMAGE).await?.map(|media| {
         json!({
-            "url": media.url(), "name": media.name, "kb": media.size.div_ceil(1024),
+            "url": module_media::public_url(ctx, &media), "name": media.name, "kb": media.size.div_ceil(1024),
             "alt": media.custom_property("alt").and_then(|alt| alt.as_str().map(str::to_owned)).unwrap_or_default(),
         })
     }))
@@ -378,6 +378,14 @@ async fn save_content(
     touched.updated_at = Set(chrono::Utc::now().fixed_offset());
     touched.update(&ctx.db).await?;
     forget_cache(&ctx, &slug).await;
+    loco_activity_log::activity(&ctx.db)
+        .in_log("pages")
+        .caused_by("user", page.user.id)
+        .performed_on("page", id)
+        .event("updated")
+        .with_property("slug", slug.clone())
+        .log_quietly("Updated the page text")
+        .await;
     Ok(back(id, "saved", "content"))
 }
 
@@ -471,10 +479,27 @@ async fn set_published(
     let item = find(&ctx, id).await?;
     let publish = form.published == "1";
     let slug = item.slug.clone();
+    let was_published = item.is_published;
     let mut active: pages::ActiveModel = item.into();
     active.is_published = Set(publish);
     active.update(&ctx.db).await?;
     forget_cache(&ctx, &slug).await;
+    loco_activity_log::activity(&ctx.db)
+        .in_log("pages")
+        .caused_by("user", page.user.id)
+        .performed_on("page", id)
+        .event(if publish { "published" } else { "unpublished" })
+        .with_changes(loco_activity_log::changes(
+            &json!({ "is_published": was_published }),
+            &json!({ "is_published": publish }),
+            &[],
+        ))
+        .log_quietly(if publish {
+            "Published the page"
+        } else {
+            "Hid the page"
+        })
+        .await;
     Ok(back(
         id,
         "saved",

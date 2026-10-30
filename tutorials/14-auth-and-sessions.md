@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 14 of 21** | [Index](00-index.md) | [Previous: 13 Console commands and the scheduler](13-console-and-schedule.md) | [Next: 15 Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)
+**Tutorial 14 of 25** | [Index](00-index.md) | [Previous: 13 Console commands and the scheduler](13-console-and-schedule.md) | [Next: 15 Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -25,6 +25,10 @@
 19. [Components and the contact form](19-components-and-contact-form.md)  
 20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
 21. [Conventions](21-conventions.md)  
+22. [Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md)  
+23. [PDF and email](23-pdf-and-email.md)  
+24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
+25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
 
 </details>
 <!-- nav:end -->
@@ -43,6 +47,8 @@ The `auth` module owns everything about who you are: login, register, logout, th
 | `GET /auth/google/redirect` | Sign in with Google (shown on the login page when `GOOGLE_CLIENT_ID` is set; see [tutorial 18](18-json-api-and-google-login.md)). |
 
 The header: guests see **Log in** (amber link) and **Register** (button); signed-in people see an avatar with a menu (Admin dashboard if they hold `dashboard.view`, My account, Log out).
+
+Sign in, sign out and registration are written to the [activity log](22-activity-log-queue-and-backups.md).
 
 ## How a session works
 

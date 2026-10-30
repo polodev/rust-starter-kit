@@ -141,11 +141,29 @@ async fn set_status(
     }
     let item = find(&ctx, id).await?;
     let replied = form.status == contacts::STATUS_REPLIED;
+    let old_status = item.status.clone();
+    let new_status = form.status.clone();
     let mut active: contacts::ActiveModel = item.into();
     active.status = Set(form.status);
     active.replied_at = Set(replied.then(|| Utc::now().fixed_offset()));
     active.updated_at = Set(Utc::now().fixed_offset());
     let saved = active.update(&ctx.db).await?;
+    loco_activity_log::activity(&ctx.db)
+        .in_log("contacts")
+        .caused_by("user", page.user.id)
+        .performed_on("contact", id)
+        .event("status_changed")
+        .with_changes(loco_activity_log::changes(
+            &json!({ "status": old_status }),
+            &json!({ "status": new_status }),
+            &[],
+        ))
+        .log_quietly(if replied {
+            "Marked the message as replied"
+        } else {
+            "Marked the message as not replied"
+        })
+        .await;
 
     if wants_fragment(&headers) {
         let data = json!({ "item": row(&saved), "can_manage": true, "saved": true });

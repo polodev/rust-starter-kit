@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 4 of 21** | [Index](00-index.md) | [Previous: 3 Rust essentials](03-rust-essentials.md) | [Next: 5 Modules and `cargo modular`](05-modules.md)
+**Tutorial 4 of 25** | [Index](00-index.md) | [Previous: 3 Rust essentials](03-rust-essentials.md) | [Next: 5 Modules and `cargo modular`](05-modules.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -25,6 +25,10 @@
 19. [Components and the contact form](19-components-and-contact-form.md)  
 20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
 21. [Conventions](21-conventions.md)  
+22. [Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md)  
+23. [PDF and email](23-pdf-and-email.md)  
+24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
+25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
 
 </details>
 <!-- nav:end -->
@@ -45,10 +49,12 @@ rust-starter-pack/
     css/input.css            Tailwind input
     static/                  served at /static (built CSS lives here)
   modules/                   feature crates (created by cargo modular)
-    site-layout/  pages/
+    site-layout/ auth/ auth-api/ social-auth/ role-permission/ admin-layout/ accounts/
+    pages/ media/ contact/ activity-log/ queue-watcher/ db-backup/ rust-eloquent-tinker/
   packages/
     cargo-modular/           the CLI
     loco-modular/            the Module trait + helpers
+    loco-activity-log/       the activity-log writer, so any module can log
     modules-registry/        generated list of modules
   tests/                     integration tests
   tutorials/  docs/

@@ -116,3 +116,39 @@ impl Task for {{task_pascal}} {
     }
 }
 "#;
+
+pub const MAILS_MOD: &str = "// mails-inject (do not remove)\n";
+
+pub const MAIL: &str = r#"use loco_rs::Result;
+use serde_json::json;
+
+{{mail_import}}
+
+/// The {{pascal}} email. Build it, then send it:
+/// `module_mail::send(&ctx, {{pascal}} { to, name }.build()?).await?`
+pub struct {{pascal}} {
+    pub to: String,
+    pub name: String,
+}
+
+impl {{pascal}} {
+    pub fn build(&self) -> Result<Mail> {
+        let data = json!({ "name": self.name });
+        Mail::to(&self.to)
+            .subject("{{pascal}}")
+            .html_template(include_str!("../../templates/mails/{{snake}}.html"), &data)?
+            .text_template(include_str!("../../templates/mails/{{snake}}.txt"), &data)
+    }
+}
+"#;
+
+pub const MAIL_HTML: &str = r#"<!doctype html>
+<html>
+<body style="font-family: Arial, sans-serif; color: #1f2937;">
+  <p>Hello {{ name }},</p>
+  <p>Write the {{pascal}} email here.</p>
+</body>
+</html>
+"#;
+
+pub const MAIL_TXT: &str = "Hello {{ name }},\n\nWrite the {{pascal}} email here.\n";

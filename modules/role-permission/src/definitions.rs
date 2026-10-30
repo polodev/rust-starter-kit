@@ -1,14 +1,15 @@
 //! Roles and permissions are defined here, in code. Run `roles:sync` after editing.
 
 /// Areas that get a `view` and a `manage` permission each: `(area, what it covers)`.
-const AREAS: [(&str, &str); 8] = [
+const AREAS: [(&str, &str); 9] = [
     ("dashboard", "admin dashboard"),
     ("users", "user accounts"),
     ("pages", "website pages"),
     ("contacts", "contact messages"),
     ("media", "uploaded files"),
     ("settings", "site settings"),
-    ("logs", "activity and API logs"),
+    ("activity_logs", "activity logs"),
+    ("ai_api_logs", "AI API logs"),
     ("queue", "jobs and schedule"),
 ];
 
@@ -89,7 +90,12 @@ pub fn role_definitions() -> Vec<RoleDef> {
             name: "Employee",
             rank: 4,
             description: "Marketing plus read access to every operational area.",
-            grants: &["settings.view", "logs.view", "queue.view"],
+            grants: &[
+                "settings.view",
+                "activity_logs.view",
+                "ai_api_logs.view",
+                "queue.view",
+            ],
         },
         RoleDef {
             slug: "admin",
@@ -101,7 +107,8 @@ pub fn role_definitions() -> Vec<RoleDef> {
                 "users.manage",
                 "media.manage",
                 "settings.manage",
-                "logs.manage",
+                "activity_logs.manage",
+                "ai_api_logs.manage",
                 "queue.manage",
             ],
         },

@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 21 of 21** | [Index](00-index.md) | [Previous: 20 Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md) | Next: none
+**Tutorial 21 of 25** | [Index](00-index.md) | [Previous: 20 Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md) | [Next: 22 Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -25,6 +25,10 @@
 19. [Components and the contact form](19-components-and-contact-form.md)  
 20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
 **21. [Conventions](21-conventions.md)**  
+22. [Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md)  
+23. [PDF and email](23-pdf-and-email.md)  
+24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
+25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
 
 </details>
 <!-- nav:end -->
@@ -33,7 +37,7 @@
 
 The full rulebook is **[`docs/CONVENTIONS.md`](../docs/CONVENTIONS.md)**. `AGENTS.md` and `CLAUDE.md` point coding agents to it, so people and agents follow the same rules. This page is the short version.
 
-## Ten rules
+## Twelve rules
 
 1. **Generate, then edit.** `cargo modular make:module` / `make:command`. Never hand-wire.
 2. **One feature, one module** in `modules/<name>/`, with its own migrations, routes, templates, permissions and tests. No dependency cycles (`admin-layout` cannot depend on `media`).
@@ -45,6 +49,8 @@ The full rulebook is **[`docs/CONVENTIONS.md`](../docs/CONVENTIONS.md)**. `AGENT
 8. **Forms:** POST only, `same_origin` first, redirect after success, 422 with the typed values on error. Public forms get a honeypot and a rate limit.
 9. **Database:** migrations live in their module, **one file per table** (no ALTER files; `tests/migrations.rs` checks it); stay compatible with Laravel (`media`, Argon2id, binary `pid`).
 10. **Done means:** `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings`, `cargo test --workspace` (one run at a time), plus the README and tutorial updated.
+11. **Operate it:** write an activity-log entry for every admin change (never secrets), wrap worker bodies in `track`, and keep storage and backup keys in `.env`, never in a tracked file.
+12. **Name things in full:** say the subject (`ai_api_logs`, "AI API logs", `activity_logs.view`), never "logs" or "api" alone, no abbreviations, so nothing is confusing when the project grows.
 
 ## Before you start something new
 
@@ -56,5 +62,5 @@ A short imperative subject, then bullets of what and why. One logical change per
 
 <!-- foot:start -->
 ---
-[Previous: 20 Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md) | [Index](00-index.md) | Next: none
+[Previous: 20 Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md) | [Index](00-index.md) | [Next: 22 Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md)
 <!-- foot:end -->

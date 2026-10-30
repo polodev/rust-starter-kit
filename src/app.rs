@@ -65,12 +65,12 @@ impl Hooks for App {
     }
 
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
-        // Uploaded files go to ./storage/uploads (git-ignored); tests keep them in memory.
+        // Uploaded files: the local folder (storage/uploads) or the R2 public bucket (MEDIA_STORAGE=r2 in .env).
+        // Tests keep them in memory.
         let driver = if ctx.environment == Environment::Test {
             storage::drivers::mem::new()
         } else {
-            storage::drivers::local::new_with_prefix("storage/uploads")
-                .map_err(|e| loco_rs::Error::string(&e.to_string()))?
+            module_media::driver_from_environment()?
         };
         Ok(ctx
             .into_builder()

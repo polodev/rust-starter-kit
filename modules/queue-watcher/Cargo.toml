@@ -1,0 +1,21 @@
+[package]
+name = "module-queue-watcher"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+loco-modular = { workspace = true }
+loco-rs = { workspace = true }
+sea-orm = { workspace = true }
+sea-orm-migration = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+axum = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }
+module-admin-layout = { path = "../admin-layout" }
+module-auth = { path = "../auth" }

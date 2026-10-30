@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 16 of 21** | [Index](00-index.md) | [Previous: 15 Roles and permissions (`role-permission` module)](15-roles-and-permissions.md) | [Next: 17 Media library (`media` module)](17-media-library.md)
+**Tutorial 16 of 25** | [Index](00-index.md) | [Previous: 15 Roles and permissions (`role-permission` module)](15-roles-and-permissions.md) | [Next: 17 Media library (`media` module)](17-media-library.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -25,6 +25,10 @@
 19. [Components and the contact form](19-components-and-contact-form.md)  
 20. [Tinker and sharing the database with Laravel](20-tinker-and-laravel-database.md)  
 21. [Conventions](21-conventions.md)  
+22. [Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md)  
+23. [PDF and email](23-pdf-and-email.md)  
+24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
+25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
 
 </details>
 <!-- nav:end -->
@@ -42,6 +46,9 @@ Sidebar sections, quick search and a navy top bar. The admin is English only and
 | `/admin/media` | `media.view` / `media.manage` | Every file, direct upload (tutorial 17) |
 | `/admin/contacts` | `contacts.view` / `contacts.manage` | Inbox with a modal and a replied status (tutorial 19) |
 | `/admin/schedule` | `queue.view` | Scheduled jobs |
+| `/admin/activity-log` | `activity_logs.view` / `activity_logs.manage` | Who did what, with before/after changes (tutorial 22) |
+| `/admin/ai-api-logs` | `ai_api_logs.view` / `ai_api_logs.manage` | Every call to an AI provider, with bulk delete (tutorial 25) |
+| `/admin/queue-watcher` | `queue.view` / `queue.manage` | Job history, pending and failed jobs (tutorial 22) |
 
 A guest is sent to login and returned afterwards. Someone without the permission sees "Access denied" inside the shell.
 

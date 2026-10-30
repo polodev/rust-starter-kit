@@ -18,6 +18,7 @@
 mod collection;
 mod commands;
 mod controllers;
+mod disk;
 mod entities;
 mod error;
 mod has_media;
@@ -33,10 +34,11 @@ use sea_orm_migration::MigrationTrait;
 
 pub use collection::{CollectionDef, CollectionKind, DEFAULT_MAX_BYTES, DOCUMENTS, IMAGES};
 pub use controllers::{read_form, read_upload, ParsedForm};
+pub use disk::{driver_from_environment, LOCAL_UPLOADS_FOLDER};
 pub use entities::media;
 pub use error::{MediaError, MediaResult};
 pub use has_media::{HasMedia, InteractsWithMedia, Owner};
-pub use service::{url_for, FileAdder};
+pub use service::{public_url, url_for, FileAdder};
 pub use upload::Upload;
 
 /// Loose files uploaded straight into the media library belong to this built-in owner.

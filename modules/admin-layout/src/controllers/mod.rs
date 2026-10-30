@@ -143,11 +143,28 @@ async fn assign_user_role(
     {
         return Err(Error::NotFound);
     }
-    if form.role.is_empty() {
+    let old_role = module_role_permission::access_for(&ctx.db, user_id)
+        .await?
+        .role
+        .map(|role| role.name);
+    let new_role = if form.role.is_empty() {
         revoke_role(&ctx.db, user_id).await?;
+        None
     } else {
-        assign_role(&ctx.db, user_id, &form.role).await?;
-    }
+        Some(assign_role(&ctx.db, user_id, &form.role).await?)
+    };
+    loco_activity_log::activity(&ctx.db)
+        .in_log("roles")
+        .caused_by("user", page.user.id)
+        .performed_on("user", user_id)
+        .event("role_changed")
+        .with_changes(loco_activity_log::changes(
+            &json!({ "role": old_role }),
+            &json!({ "role": new_role }),
+            &[],
+        ))
+        .log_quietly("Changed the role")
+        .await;
     Ok(Redirect::to("/admin/users?saved=1").into_response())
 }
 

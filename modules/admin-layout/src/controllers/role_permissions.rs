@@ -460,11 +460,16 @@ async fn user_update(
         return Ok(back("role"));
     }
 
-    if role.is_empty() {
+    let old_role = access_for(&ctx.db, user_id)
+        .await?
+        .role
+        .map(|role| role.name);
+    let new_role = if role.is_empty() {
         revoke_role(&ctx.db, user_id).await?;
+        None
     } else {
-        assign_role(&ctx.db, user_id, role).await?;
-    }
+        Some(assign_role(&ctx.db, user_id, role).await?)
+    };
     let by_id: HashMap<i64, String> = permissions::Entity::find()
         .all(&ctx.db)
         .await?
@@ -484,6 +489,24 @@ async fn user_update(
     for key in current.iter().filter(|key| !wanted.contains(key.as_str())) {
         revoke_permission(&ctx.db, user_id, key).await?;
     }
+    let sorted = |keys: &mut Vec<String>| {
+        keys.sort();
+        std::mem::take(keys)
+    };
+    let mut before: Vec<String> = current.iter().cloned().collect();
+    let mut after: Vec<String> = wanted.iter().map(|key| (*key).to_string()).collect();
+    loco_activity_log::activity(&ctx.db)
+        .in_log("roles")
+        .caused_by("user", page.user.id)
+        .performed_on("user", user_id)
+        .event("assignment_changed")
+        .with_changes(loco_activity_log::changes(
+            &json!({ "role": old_role, "direct_permissions": sorted(&mut before) }),
+            &json!({ "role": new_role, "direct_permissions": sorted(&mut after) }),
+            &[],
+        ))
+        .log_quietly("Changed the role and direct permissions")
+        .await;
     Ok(Redirect::to(&format!("{BASE}/users?saved=assignment")).into_response())
 }
 

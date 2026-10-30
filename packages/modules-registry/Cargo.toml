@@ -17,3 +17,9 @@ module-auth-api = { path = "../../modules/auth-api" }
 module-social-auth = { path = "../../modules/social-auth" }
 module-contact = { path = "../../modules/contact" }
 module-rust-eloquent-tinker = { path = "../../modules/rust-eloquent-tinker" }
+module-activity-log = { path = "../../modules/activity-log" }
+module-queue-watcher = { path = "../../modules/queue-watcher" }
+module-db-backup = { path = "../../modules/db-backup" }
+module-pdf = { path = "../../modules/pdf" }
+module-mail = { path = "../../modules/mail" }
+module-ai-service = { path = "../../modules/ai-service" }
