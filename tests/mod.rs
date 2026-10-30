@@ -1,3 +1,4 @@
+mod migrations;
 mod models;
 mod requests;
 mod tasks;

@@ -17,10 +17,10 @@ class Media extends BaseModel
         'responsive_images' => 'array',
     ];
 
-    /** Where the file sits on its disk: `{id}/{file_name}`, unless it kept an older location. */
+    /** Where the file sits on its disk: `{id}/{file_name}`. */
     public function getPathAttribute(): string
     {
-        return $this->custom_properties['legacy_path'] ?? "{$this->id}/{$this->file_name}";
+        return "{$this->id}/{$this->file_name}";
     }
 
     /** The address the Rust app serves it from. */

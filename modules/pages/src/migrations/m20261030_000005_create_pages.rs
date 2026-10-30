@@ -26,9 +26,11 @@ impl MigrationTrait for Migration {
             &[
                 ("id", ColType::PkAuto),
                 ("locale", ColType::StringLen(8)),
-                ("title", ColType::StringLen(255)),
-                ("meta_description", ColType::StringLen(320)),
-                ("body_html", ColType::Text),
+                // Optional for every language but English (English is checked when a page is saved);
+                // an empty part means "use the English text".
+                ("title", ColType::StringLenNull(255)),
+                ("meta_description", ColType::StringLenNull(320)),
+                ("body_html", ColType::TextNull),
             ],
             &[("pages", "")],
         )

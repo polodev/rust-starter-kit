@@ -67,7 +67,7 @@ Or one expression: `cargo run -- task tinker:eloquent run:"User::count()"`. In p
 - **`users.pid`** is 16 raw bytes. The tinker model fills it; `$user->public_id` shows it as text.
 - **`media`** is Spatie's table, unchanged (tutorial 17). Files are at `{id}/{file_name}`.
 - **Unsigned columns** map to unsigned Rust types.
-- **Migrations:** write them with `CREATE TABLE IF NOT EXISTS` when Laravel may already own the table, and never edit one that has run.
+- **Migrations:** write them with `CREATE TABLE IF NOT EXISTS` when Laravel may already own the table, and keep one migration file per table.
 - **Not in tinker:** the rest of Laravel (`Cache`, `Auth`, `Mail`, queues, `route()`).
 
 ## Eloquent in Rust code?

@@ -50,15 +50,8 @@ impl Model {
         self.model_id.parse().ok()
     }
 
-    /// Where the file is stored on its disk. Rows moved over from the older `media_files` table
-    /// remember their original location in the `legacy_path` property.
+    /// Where the file is stored on its disk: `{id}/{file_name}`, with the prefix in front when set.
     pub fn storage_path(&self, prefix: &str) -> String {
-        if let Some(path) = self
-            .custom_property("legacy_path")
-            .and_then(|value| value.as_str().map(str::to_owned))
-        {
-            return path;
-        }
         let folder = if prefix.is_empty() {
             self.id.to_string()
         } else {

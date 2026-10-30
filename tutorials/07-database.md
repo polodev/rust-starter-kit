@@ -35,7 +35,7 @@ SeaORM talks to MariaDB. Three pieces: a **migration** creates the table, an **e
 
 ## Migrations
 
-`modules/pages/src/migrations/m20261030_000001_create_pages.rs`:
+`modules/pages/src/migrations/m20261030_000005_create_pages.rs`:
 
 ```rust
 create_table(
@@ -62,7 +62,7 @@ Run them:
 cargo run -- db migrate
 ```
 
-**Never** drop, reset or truncate the development database for convenience. Use forward migrations only.
+**One file per table.** The starter ships one base migration for each table and no `ALTER` files, so a fresh clone sees a clean schema. To change a table of the starter itself, edit its migration and rebuild your local database: `cargo run -- db reset` then `cargo run -- db seed`. Once your own project has data you care about (a shared or production database), switch to forward migrations: add a **new** file for each change and never edit one that has run. `tests/migrations.rs` keeps the starter honest.
 
 ## Entities
 

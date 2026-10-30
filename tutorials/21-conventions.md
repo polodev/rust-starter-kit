@@ -43,7 +43,7 @@ The full rulebook is **[`docs/CONVENTIONS.md`](../docs/CONVENTIONS.md)**. `AGENT
 6. **Admin pages:** one container, a breadcrumb, an ID first column that links to Show, then Actions.
 7. **Text:** every visible string is a Fluent key in `en-US` and `bn-BD`. Database content: English required, other languages optional and falling back.
 8. **Forms:** POST only, `same_origin` first, redirect after success, 422 with the typed values on error. Public forms get a honeypot and a rate limit.
-9. **Database:** migrations live in their module and are never edited after they ran; stay compatible with Laravel (`media`, Argon2id, binary `pid`).
+9. **Database:** migrations live in their module, **one file per table** (no ALTER files; `tests/migrations.rs` checks it); stay compatible with Laravel (`media`, Argon2id, binary `pid`).
 10. **Done means:** `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings`, `cargo test --workspace` (one run at a time), plus the README and tutorial updated.
 
 ## Before you start something new

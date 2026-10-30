@@ -203,7 +203,13 @@ modules/<name>/
 - A migration lives in the module that owns the table, as
   `m{YYYYMMDD}_{six digit sequence}_{what_it_does}.rs`, and is registered in that module's `migrations/mod.rs`.
   Migrations of all modules are merged by name.
-- **Never edit a migration that has run anywhere.** Add a new one that changes the table.
+- **One migration file per table, in this starter.** The base is clean: every table is created by exactly one
+  file and never altered by a later one (no `ALTER TABLE`, no "add column" files). While the starter is still
+  being shaped, change the table's own migration and recreate the local database (`cargo run -- db reset`, then
+  `db seed`). `tests/migrations.rs` enforces this and also checks that sequence numbers are unique.
+  Someone who clones the starter and ships it should add **new** migration files for their own changes and never
+  edit one that has already run on a shared or production database.
+- Give every migration a unique, increasing sequence number (`m20261030_000035_...`); pick the next free one.
 - Migrations that must work on a database also used by Laravel use `CREATE TABLE IF NOT EXISTS` and plain SQL.
 - **Laravel compatibility** (the apps may share a database):
   - `media` is Spatie laravel-medialibrary's table, unchanged.

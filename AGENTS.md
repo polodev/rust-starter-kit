@@ -37,7 +37,7 @@ Other places to look:
 | `modules/<name>/README.md` | what one module does, its routes and settings |
 
 Project rules that differ from a stock Loco app: features are `modules/*` crates made with `cargo modular`;
-migrations live in their module and are never edited after they ran; all visible text is a Fluent key in both
+every table has exactly one base migration file in its module (`tests/migrations.rs` checks it), so change the table's own migration and run `cargo run -- db reset`, while someone who has cloned the starter adds new files for their own changes; all visible text is a Fluent key in both
 `en-US` and `bn-BD`; the API is under `/api/v1`; run **one** `cargo test` at a time (shared test database).
 
 ## The three rules that prevent most mistakes
