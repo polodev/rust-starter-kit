@@ -61,10 +61,10 @@ async fn single_file_collection_replaces_the_old_file() {
     assert_eq!(all[0].id, second.id);
     assert_eq!(all[0].name, "Second cover");
     assert!(
-        !exists(&ctx, &first.storage_path()).await,
+        !exists(&ctx, &first.storage_path("")).await,
         "the replaced file is removed from storage"
     );
-    assert!(exists(&ctx, &second.storage_path()).await);
+    assert!(exists(&ctx, &second.storage_path("")).await);
 }
 
 #[tokio::test]
@@ -100,7 +100,7 @@ async fn multiple_collection_keeps_many_and_can_keep_only_the_latest_n() {
         [gallery[1].id, gallery[2].id],
         "the oldest one went"
     );
-    assert!(!exists(&ctx, &gallery[0].storage_path()).await);
+    assert!(!exists(&ctx, &gallery[0].storage_path("")).await);
     assert!(
         kept[0].order_column < kept[1].order_column,
         "files keep their order"
@@ -180,7 +180,7 @@ async fn stored_names_follow_the_content_and_are_safe() {
         media.file_name, "My-Photo-1.jpg",
         "extension comes from the content, not the client"
     );
-    assert_eq!(media.mime_type, "image/jpeg");
+    assert_eq!(media.mime_type.as_deref(), Some("image/jpeg"));
     assert_eq!(media.name, "My Photo (1)");
     assert_eq!(
         media.custom_property("alt"),
@@ -1199,7 +1199,7 @@ async fn direct_upload_and_delete_need_media_manage() {
             .await;
         let id = {
             use sea_orm::EntityTrait;
-            module_media::media_files::Entity::find()
+            module_media::media::Entity::find()
                 .one(&ctx.db)
                 .await
                 .unwrap()
@@ -1308,7 +1308,7 @@ async fn the_library_never_deletes_files_that_belong_to_a_record() {
 
         let owned = {
             use sea_orm::EntityTrait;
-            module_media::media_files::Entity::find()
+            module_media::media::Entity::find()
                 .one(&ctx.db)
                 .await
                 .unwrap()
@@ -1341,4 +1341,83 @@ async fn the_library_never_deletes_files_that_belong_to_a_record() {
             .expect("the page still shows its image");
     })
     .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn rows_written_by_laravel_spatie_are_read_served_and_extended_in_their_id_folder() {
+    use sea_orm::{ConnectionTrait, EntityTrait};
+    request::<App, _, _>(|server, ctx| async move {
+        // Two rows exactly as Laravel's medialibrary writes them: a morph alias and a class name,
+        // text model ids, no uuid on the older one, unsigned ids and the s3 disk name.
+        ctx.db
+            .execute_unprepared(
+                "INSERT INTO media (id, model_type, model_id, uuid, collection_name, name, file_name, mime_type, disk, conversions_disk, size, manipulations, custom_properties, generated_conversions, responsive_images, order_column, created_at, updated_at) VALUES
+                 (4242, 'enrollment', '77', NULL, 'purchase_receipt', 'receipt', 'receipt.png', 'image/png', 's3-media', 's3-media', 20, '[]', '{}', '[]', '[]', 1, NOW(), NOW()),
+                 (4243, 'Modules\\\\Enrollment\\\\Models\\\\Enrollment', 'a1b2-uuid-key', 'c0ffee00-0000-4000-8000-000000000001', 'identification_file', 'nid', 'nid.png', 'image/png', 's3-media', NULL, 20, '[]', '{\"uploader_user_id\":1}', NULL, '[]', NULL, NOW(), NOW())",
+            )
+            .await
+            .unwrap();
+        ctx.storage
+            .upload(Path::new("4242/receipt.png"), &axum::body::Bytes::from_static(PNG))
+            .await
+            .unwrap();
+
+        let owner = Owner::new("enrollment", 77);
+        let found = owner.get_media(&ctx, "purchase_receipt").await.unwrap();
+        assert_eq!(found.len(), 1);
+        let row = &found[0];
+        assert_eq!((row.id, row.size, row.disk.as_str()), (4242, 20, "s3-media"));
+        assert_eq!(row.uuid, None);
+        assert_eq!(row.url(), "/media/4242/receipt.png");
+        assert_eq!(row.storage_path(""), "4242/receipt.png");
+        assert_eq!(row.storage_path("tenant"), "tenant/4242/receipt.png");
+        assert!(!row.is_public(), "imported files stay private until a collection opts in");
+
+        // Rows whose owner key is not a number are still readable, just not by this numeric API.
+        let other = module_media::media::Entity::find_by_id(4243u64).one(&ctx.db).await.unwrap().unwrap();
+        assert_eq!((other.owner_id(), other.generated_conversions, other.order_column), (None, None, None));
+
+        // Private: a stranger gets nothing, staff with media.view get the file from {id}/{file}.
+        assert_eq!(server.get("/media/4242/receipt.png").await.status_code(), 404);
+        user(&ctx, "boss@example.com", Some("developer")).await;
+        let cookie = login(&server, "boss@example.com", "password123").await;
+        let served = server.get("/media/4242/receipt.png").add_header("cookie", cookie.clone()).await;
+        served.assert_status_ok();
+        assert_eq!(served.as_bytes().as_ref(), PNG);
+        assert_eq!(server.get("/media/4242/wrong-name.png").add_header("cookie", cookie).await.status_code(), 404);
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn new_files_are_stored_under_their_row_id_with_spatie_columns() {
+    let ctx = boot_test::<App>().await.unwrap().app_context;
+    let owner =
+        Owner::new("enrollment", 5).with_collections(vec![CollectionDef::multiple("receipts")
+            .accepts_mime_types(IMAGES)
+            .public()]);
+    let media = owner
+        .add_media(&ctx, png("Receipt One.png"))
+        .with_custom_properties(serde_json::json!({"uploader_user_id": 9}))
+        .to_media_collection("receipts")
+        .await
+        .unwrap();
+    assert!(exists(&ctx, &format!("{}/{}", media.id, media.file_name)).await);
+    assert_eq!(media.model_id, "5");
+    assert_eq!(media.manipulations, "[]");
+    assert_eq!(media.responsive_images, "[]");
+    assert_eq!(media.mime_type.as_deref(), Some("image/png"));
+    assert_eq!(media.order_column, Some(1));
+    assert!(media.uuid.is_some() && media.is_public());
+    assert_eq!(
+        media.custom_property("uploader_user_id"),
+        Some(serde_json::json!(9))
+    );
+    owner
+        .clear_media_collection(&ctx, "receipts")
+        .await
+        .unwrap();
+    assert!(!exists(&ctx, &format!("{}/{}", media.id, media.file_name)).await);
 }

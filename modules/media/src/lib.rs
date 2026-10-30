@@ -1,4 +1,6 @@
-//! Media library, modelled on Spatie's laravel-medialibrary.
+//! Media library, modelled on Spatie's laravel-medialibrary. It uses Spatie's own `media` table and
+//! its `{id}/{file_name}` file layout, so a Laravel app and this app can share one database and one
+//! bucket, and existing Laravel media can be imported with `media:import`.
 //!
 //! Any model can own files by implementing [`HasMedia`]. Files live in named *collections*, and a
 //! collection is either single-file (adding a file replaces the old one, like a logo) or multiple
@@ -19,6 +21,7 @@ mod controllers;
 mod entities;
 mod error;
 mod has_media;
+mod import;
 mod migrations;
 mod service;
 mod upload;
@@ -30,7 +33,7 @@ use sea_orm_migration::MigrationTrait;
 
 pub use collection::{CollectionDef, CollectionKind, DEFAULT_MAX_BYTES, DOCUMENTS, IMAGES};
 pub use controllers::{read_form, read_upload, ParsedForm};
-pub use entities::media_files;
+pub use entities::media;
 pub use error::{MediaError, MediaResult};
 pub use has_media::{HasMedia, InteractsWithMedia, Owner};
 pub use service::{url_for, FileAdder};

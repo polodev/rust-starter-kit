@@ -117,6 +117,27 @@ cargo modular schedule:list      # show all jobs and their cron
 cargo modular schedule:work      # run the scheduler in the foreground
 ```
 
+## Tinker: change the database from a prompt
+
+Laravel's `php artisan tinker` evaluates PHP as you type it. Rust is compiled, so it cannot evaluate Rust that way. This project gives you two consoles instead:
+
+| Command | What it is |
+|---|---|
+| `cargo run -- task tinker` | Built-in SQL console. Type SQL ending with `;`. Dot commands: `.tables`, `.desc users`, `.count users`, `.hash secret`, `.begin`, `.commit`, `.rollback`, `.help`, `.exit`. |
+| `cargo run -- task tinker:eloquent` | The `rust-eloquent-tinker` module: real PsySH with Eloquent models and the `DB` facade on the same database. |
+
+```text
+tinker> update users set name = 'Ada' where id = 1;
+1 row(s) affected
+tinker> update users set name = 'x';
+This has no WHERE and changes every row.
+run it anyway? [y/N]
+```
+
+Use `.begin` first to try a change safely: nothing is saved until `.commit`, and `.rollback` throws it away. In production the SQL console is read-only unless you add `write:true`.
+
+`tinker:eloquent` needs PHP 8.2+ and Composer (packages install on the first run) and is for people who already think in Eloquent: `User::first()`, `DB::table('users')->where(...)->update([...])`. Passwords there must be **Argon2id**, because that is what this app verifies. Assigning `password` on the `User` model does it for you, or call `rust_password('secret')`. Details are in `modules/rust-eloquent-tinker/README.md`.
+
 ## Running it in production
 
 Laravel needs one cron line (`* * * * * php artisan schedule:run`). Here `schedule:work` is a long-running process, so run it under a supervisor (systemd, Supervisor, a container) and restart it on failure:

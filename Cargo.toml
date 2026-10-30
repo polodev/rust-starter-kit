@@ -50,6 +50,7 @@ include_dir = "0.7"
 fluent-templates = { version = "0.15", features = ["tera"] }
 unic-langid = "0.9"
 axum-extra = { version = "0.10", features = ["form"] }
+rustyline = "14"
 
 [[bin]]
 name = "rust-starter-cli"

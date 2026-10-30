@@ -16,3 +16,4 @@ module-media = { path = "../../modules/media" }
 module-auth-api = { path = "../../modules/auth-api" }
 module-social-auth = { path = "../../modules/social-auth" }
 module-contact = { path = "../../modules/contact" }
+module-rust-eloquent-tinker = { path = "../../modules/rust-eloquent-tinker" }

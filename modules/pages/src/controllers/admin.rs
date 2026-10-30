@@ -141,7 +141,7 @@ async fn language_rows(ctx: &AppContext, page_id: i64) -> Result<Vec<Value>> {
 async fn feature_image_json(ctx: &AppContext, item: &pages::Model) -> Result<Option<Value>> {
     Ok(item.get_first_media(ctx, FEATURE_IMAGE).await?.map(|media| {
         json!({
-            "url": media.url(), "name": media.name, "kb": (media.size + 1023) / 1024,
+            "url": media.url(), "name": media.name, "kb": media.size.div_ceil(1024),
             "alt": media.custom_property("alt").and_then(|alt| alt.as_str().map(str::to_owned)).unwrap_or_default(),
         })
     }))

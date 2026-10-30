@@ -1,1 +1,1 @@
-pub mod media_files;
+pub mod media;

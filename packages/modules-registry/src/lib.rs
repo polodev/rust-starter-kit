@@ -11,6 +11,7 @@ pub fn all() -> Vec<Box<dyn Module>> {
         Box::new(module_media::MediaModule),
         Box::new(module_pages::PagesModule),
         Box::new(module_role_permission::RolePermissionModule),
+        Box::new(module_rust_eloquent_tinker::RustEloquentTinkerModule),
         Box::new(module_site_layout::SiteLayoutModule),
         Box::new(module_social_auth::SocialAuthModule),
     ]

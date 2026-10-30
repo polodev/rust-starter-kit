@@ -38,6 +38,24 @@ cargo modular schedule:list                                    # cron jobs decla
 cargo modular schedule:work                                    # run the scheduler (one instance per environment)
 ```
 
+### Tinker (change the database from a prompt)
+
+Two consoles, both started as tasks:
+
+```sh
+cargo run -- task tinker            # SQL console: select * from users limit 5;  .tables  .desc users
+cargo run -- task tinker:eloquent   # Laravel-style: User::first(), DB::table('users')->update([...])
+```
+
+- `tinker` is built in (no extra tools). It takes SQL ending with `;`, has `.tables`, `.desc <table>`,
+  `.count <table>`, `.hash <password>`, and `.begin` / `.commit` / `.rollback` so you can try a change first.
+  `UPDATE` or `DELETE` without `WHERE` asks for confirmation. In production it is read-only unless you
+  add `write:true`.
+- `tinker:eloquent` is the `rust-eloquent-tinker` module: PsySH, Eloquent models and the `DB` facade
+  pointed at this app's database, for people who already know Laravel tinker. It needs PHP 8.2+ and
+  Composer (packages install on first run). Passwords must be Argon2id (`rust_password('x')`), not
+  bcrypt. See `modules/rust-eloquent-tinker/README.md`.
+
 A module declares jobs with `fn schedule(&self) -> Vec<ScheduledJob>`, for example
 `ScheduledJob::command("pages:check-translations").daily_at(3, 0)`.
 
@@ -51,8 +69,12 @@ The app, the migrator and the view engine all read `modules_registry::all()`.
 | `auth` | Login, register, logout, DB sessions, CSRF origin check, login lockout |
 | `role-permission` | Six-role hierarchy and permissions defined in code (developer holds all) |
 | `admin-layout` | Admin shell: permission-filtered sidebar, Ctrl/Cmd+K search, dashboard, users, roles, schedule |
-| `media` | Spatie-style media library: single and multiple collections, `HasMedia` |
-| `accounts` | Profile, change password, logo upload, inside an account sub-layout |
+| `media` | Spatie-compatible media library (same `media` table and `{id}/{file}` layout): collections, `HasMedia`, `media:import` |
+| `accounts` | Profile, change password, logo upload; admin user show/edit (name, email, image, generated password) |
+| `auth-api` | Sanctum-style bearer tokens under `/api/v1/auth`, `ApiAuth` extractor for other API modules |
+| `social-auth` | Sign in with Google for the website and the API (ID token), linked accounts |
+| `contact` | Public `/contact` form that submits without a reload, with a honeypot; admin inbox with a modal and a replied status |
+| `rust-eloquent-tinker` | Dev console with Eloquent and the `DB` facade on this database (`task tinker:eloquent`) |
 
 ## Cache and sessions
 

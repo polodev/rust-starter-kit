@@ -16,10 +16,10 @@ use serde_json::json;
 
 use crate::{
     collection::{CollectionDef, DEFAULT_MAX_BYTES, DOCUMENTS},
-    entities::media_files,
+    entities::media,
     error::MediaError,
     has_media::{InteractsWithMedia, Owner},
-    service::delete_item,
+    service::{delete_item, direct_url, prefix},
     upload::Upload,
     LIBRARY_COLLECTION, LIBRARY_OWNER_ID, LIBRARY_OWNER_TYPE,
 };
@@ -86,34 +86,37 @@ pub async fn read_upload(mut multipart: Multipart, field_name: &str) -> Option<U
 async fn serve(
     State(ctx): State<AppContext>,
     OptionalAuth(user): OptionalAuth,
-    Path((uuid, file_name)): Path<(String, String)>,
+    Path((id, file_name)): Path<(u64, String)>,
 ) -> Result<Response> {
-    let Some(item) = media_files::Entity::find()
-        .filter(media_files::Column::Uuid.eq(uuid.as_str()))
-        .one(&ctx.db)
-        .await?
-    else {
+    let Some(item) = media::Entity::find_by_id(id).one(&ctx.db).await? else {
         return Err(Error::NotFound);
     };
     if item.file_name != file_name {
         return Err(Error::NotFound);
     }
-    if !item.is_public {
+    if !item.is_public() {
         let allowed = user.is_some_and(|user| {
-            (item.model_type == "user" && item.model_id == user.id) || user.access.can("media.view")
+            (item.model_type == "user" && item.owner_id() == Some(user.id))
+                || user.access.can("media.view")
         });
         if !allowed {
             return Err(Error::NotFound);
         }
     }
+    // A public file on a disk with a public URL (S3, a CDN) is served from there, not through us.
+    if item.is_public() {
+        if let Some(url) = direct_url(&ctx, &item) {
+            return Ok(Redirect::temporary(&url).into_response());
+        }
+    }
     let bytes: Vec<u8> = ctx
         .storage
-        .download(FsPath::new(&item.storage_path()))
+        .download(FsPath::new(&item.storage_path(&prefix(&ctx))))
         .await
         .map_err(|_| Error::NotFound)?;
     let bytes = Bytes::from(bytes);
 
-    let cache = if item.is_public {
+    let cache = if item.is_public() {
         "public, max-age=86400"
     } else {
         "private, max-age=3600"
@@ -121,7 +124,12 @@ async fn serve(
     Ok((
         StatusCode::OK,
         [
-            (header::CONTENT_TYPE, item.mime_type.clone()),
+            (
+                header::CONTENT_TYPE,
+                item.mime_type
+                    .clone()
+                    .unwrap_or_else(|| "application/octet-stream".to_string()),
+            ),
             (header::CONTENT_LENGTH, bytes.len().to_string()),
             (header::CACHE_CONTROL, cache.to_string()),
             (header::X_CONTENT_TYPE_OPTIONS, "nosniff".to_string()),
@@ -149,7 +157,8 @@ struct LibraryQuery {
 }
 
 /// Where the owner of a file is edited, when this app has a page for it.
-fn owner_link(model_type: &str, model_id: i64) -> Option<(String, String)> {
+fn owner_link(model_type: &str, model_id: Option<i64>) -> Option<(String, String)> {
+    let model_id = model_id?;
     match model_type {
         LIBRARY_OWNER_TYPE => None,
         "page" => Some((
@@ -177,21 +186,21 @@ async fn library(
     let collection = query.collection.clone().unwrap_or_default();
     let kind = query.kind.clone().unwrap_or_default();
 
-    let mut select = media_files::Entity::find();
+    let mut select = media::Entity::find();
     if !search.is_empty() {
-        select = select.filter(media_files::Column::Name.contains(search.as_str()));
+        select = select.filter(media::Column::Name.contains(search.as_str()));
     }
     if !collection.is_empty() {
-        select = select.filter(media_files::Column::CollectionName.eq(collection.as_str()));
+        select = select.filter(media::Column::CollectionName.eq(collection.as_str()));
     }
     match kind.as_str() {
-        "image" => select = select.filter(media_files::Column::MimeType.starts_with("image/")),
-        "pdf" => select = select.filter(media_files::Column::MimeType.eq("application/pdf")),
+        "image" => select = select.filter(media::Column::MimeType.starts_with("image/")),
+        "pdf" => select = select.filter(media::Column::MimeType.eq("application/pdf")),
         _ => {}
     }
 
     let paginator = select
-        .order_by_desc(media_files::Column::Id)
+        .order_by_desc(media::Column::Id)
         .paginate(&ctx.db, PER_PAGE);
     let totals = paginator.num_items_and_pages().await?;
     let current = query
@@ -200,11 +209,11 @@ async fn library(
         .clamp(1, totals.number_of_pages.max(1));
     let items = paginator.fetch_page(current - 1).await?;
 
-    let collections: Vec<String> = media_files::Entity::find()
+    let collections: Vec<String> = media::Entity::find()
         .select_only()
-        .column(media_files::Column::CollectionName)
+        .column(media::Column::CollectionName)
         .distinct()
-        .order_by_asc(media_files::Column::CollectionName)
+        .order_by_asc(media::Column::CollectionName)
         .into_tuple::<String>()
         .all(&ctx.db)
         .await?;
@@ -212,12 +221,13 @@ async fn library(
     let rows: Vec<_> = items
         .iter()
         .map(|item| {
-            let owner = owner_link(&item.model_type, item.model_id);
+            let owner = owner_link(&item.model_type, item.owner_id());
+            let mime = item.mime_type.clone().unwrap_or_default();
             let is_library = item.model_type == LIBRARY_OWNER_TYPE;
             json!({
-                "name": item.name, "file_name": item.file_name, "owner_type": if is_library { "loose file, no record".to_string() } else { item.model_type.clone() }, "url": item.url(), "mime": item.mime_type, "kb": (item.size + 1023) / 1024,
-                "is_image": item.mime_type.starts_with("image/"), "collection": item.collection_name,
-                "public": item.is_public, "added": item.created_at.format("%Y-%m-%d").to_string(),
+                "name": item.name, "file_name": item.file_name, "owner_type": if is_library { "loose file, no record".to_string() } else { item.model_type.clone() }, "url": item.url(), "mime": mime, "kb": u64::from(item.size).div_ceil(1024),
+                "is_image": mime.starts_with("image/"), "collection": item.collection_name,
+                "public": item.is_public(), "added": item.created_at.map(|at| at.format("%Y-%m-%d").to_string()).unwrap_or_default(),
                 "is_library": is_library, "id": item.id,
                 "owner_label": if is_library { "Media library".to_string() } else { owner.as_ref().map_or_else(|| format!("{} #{}", item.model_type, item.model_id), |(label, _)| label.clone()) },
                 "owner_url": owner.map(|(_, url)| url),
@@ -333,7 +343,7 @@ async fn delete(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
     page: AdminPage,
-    Path(id): Path<i64>,
+    Path(id): Path<u64>,
 ) -> Result<Response> {
     if !page.can("media.manage") {
         return page.forbidden(&v);
@@ -341,8 +351,8 @@ async fn delete(
     if !same_origin(&headers) {
         return Ok((StatusCode::FORBIDDEN, "request rejected").into_response());
     }
-    let item = media_files::Entity::find_by_id(id)
-        .filter(media_files::Column::ModelType.eq(LIBRARY_OWNER_TYPE))
+    let item = media::Entity::find_by_id(id)
+        .filter(media::Column::ModelType.eq(LIBRARY_OWNER_TYPE))
         .one(&ctx.db)
         .await?
         .ok_or(Error::NotFound)?;
@@ -352,7 +362,7 @@ async fn delete(
 
 pub fn routes() -> Vec<Routes> {
     vec![Routes::new()
-        .add("/media/{uuid}/{file}", get(serve))
+        .add("/media/{id}/{file}", get(serve))
         .add("/admin/media", get(library))
         .add("/admin/media/upload", post(upload))
         .add("/admin/media/{id}/delete", post(delete))]

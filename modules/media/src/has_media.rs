@@ -4,7 +4,7 @@ use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
 use crate::{
     collection::CollectionDef,
-    entities::media_files,
+    entities::media,
     error::MediaResult,
     service::{delete_item, list, FileAdder},
     upload::Upload,
@@ -78,7 +78,7 @@ pub trait InteractsWithMedia: HasMedia {
         &self,
         ctx: &AppContext,
         collection: &str,
-    ) -> MediaResult<Vec<media_files::Model>> {
+    ) -> MediaResult<Vec<media::Model>> {
         list(ctx, &self.media_type(), self.media_id(), collection).await
     }
 
@@ -86,7 +86,7 @@ pub trait InteractsWithMedia: HasMedia {
         &self,
         ctx: &AppContext,
         collection: &str,
-    ) -> MediaResult<Option<media_files::Model>> {
+    ) -> MediaResult<Option<media::Model>> {
         Ok(self.get_media(ctx, collection).await?.into_iter().next())
     }
 
@@ -94,7 +94,7 @@ pub trait InteractsWithMedia: HasMedia {
         &self,
         ctx: &AppContext,
         collection: &str,
-    ) -> MediaResult<Option<media_files::Model>> {
+    ) -> MediaResult<Option<media::Model>> {
         Ok(self.get_media(ctx, collection).await?.pop())
     }
 
@@ -124,10 +124,10 @@ pub trait InteractsWithMedia: HasMedia {
     }
 
     /// Deletes one file, but only if it belongs to this model. Returns whether it was deleted.
-    async fn delete_media(&self, ctx: &AppContext, media_id: i64) -> MediaResult<bool> {
-        let found = media_files::Entity::find_by_id(media_id)
-            .filter(media_files::Column::ModelType.eq(self.media_type()))
-            .filter(media_files::Column::ModelId.eq(self.media_id()))
+    async fn delete_media(&self, ctx: &AppContext, media_id: u64) -> MediaResult<bool> {
+        let found = media::Entity::find_by_id(media_id)
+            .filter(media::Column::ModelType.eq(self.media_type()))
+            .filter(media::Column::ModelId.eq(self.media_id().to_string()))
             .one(&ctx.db)
             .await?;
         match found {

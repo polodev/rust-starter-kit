@@ -102,7 +102,7 @@ Form: `<form method="post" enctype="multipart/form-data"><input type="file" name
 ## Where files live and who can fetch them
 
 - Files are stored through Loco's storage: `storage/uploads/` in development, in memory in tests. Point it at S3 or R2 later by changing the driver in `App::after_context`; no module code changes.
-- Rows are in the `media_files` table (`model_type`, `model_id`, `collection_name`, `name`, `file_name`, `mime_type`, `size`, `custom_properties`, `order_column`, `is_public`).
+- Rows are in the `media` table, which is Spatie laravel-medialibrary's own table (`model_type`, `model_id`, `uuid`, `collection_name`, `name`, `file_name`, `mime_type`, `disk`, `conversions_disk`, `size`, `manipulations`, `custom_properties`, `generated_conversions`, `responsive_images`, `order_column`, timestamps). A Laravel app can use the same table.
 - `GET /media/{uuid}/{file}` serves them. **Public** collections (`.public()`) go to everyone. **Private** ones (the default) go only to the owner and staff with `media.view`; everyone else gets a 404. Responses carry `nosniff` and a restrictive CSP.
 
 ## A worked example: the page feature image
@@ -169,3 +169,24 @@ Loco limits a request body to 10 MB (set by `limit_payload` in `config/*.yaml`).
 ---
 [Previous: 16 The admin dashboard (`admin-layout` module)](16-admin-dashboard.md) | [Index](00-index.md)
 <!-- foot:end -->
+
+
+## Sharing the database with a Laravel (Spatie) app
+
+The media module uses Spatie's table and file layout, so you can move a Laravel project over without converting its media.
+
+- **File layout:** a file lives at `{id}/{file_name}` on the storage disk (with `settings.media.prefix` in front when set), the same as Spatie's `DefaultPathGenerator`. Point Loco's `storage` at the same bucket and existing files are found where Laravel left them.
+- **Owners:** `Owner::new("enrollment", 77)` matches rows whose `model_type` is `enrollment` and `model_id` is `77`. Use the same alias (or full class name) Laravel stores. `model_id` is text, so uuid keys are fine; only numeric keys can be read through `owner_id()`.
+- **Import:** `cargo run -- task media:import database:bimafy_sep24` copies another database's `media` table on the same server into this one, keeping ids. It can be run again; rows already present are skipped. If both apps use one database there is nothing to import.
+- **Public or private:** an imported file is private (only its owner and staff with `media.view` can open it) until it has `"public": true` in `custom_properties`. Collections declared `.public()` set that on new files. The `disk` column keeps Laravel's name (for example `s3-media`); new rows get `settings.media.disk`.
+- **CDN:** set `settings.media.disk_urls.<disk>` and public files at `/media/{id}/{file}` redirect to `{url}/{path}`, so their bytes do not pass through this app.
+- **Not covered:** image conversions and responsive images. Their columns are kept and written as `[]`.
+
+```yaml
+settings:
+  media:
+    disk: s3-media
+    prefix: ""
+    disk_urls:
+      s3-media: https://cdn.example.com
+```

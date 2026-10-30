@@ -126,3 +126,11 @@ auth:
 cache:
   kind: InMem
   max_capacity: 1000
+
+# Media library (Spatie-compatible layout). All optional; see tutorials/17-media-library.md.
+# settings:
+#   media:
+#     disk: s3-media
+#     prefix: ""
+#     disk_urls:
+#       s3-media: https://cdn.example.com

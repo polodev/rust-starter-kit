@@ -7,14 +7,55 @@ use uuid::Uuid;
 
 use crate::{
     collection::CollectionDef,
-    entities::media_files,
+    entities::media,
     error::{MediaError, MediaResult},
     upload::{extension_for, sanitize_stem, Upload},
 };
 
-/// Address of a stored file as served by this module.
-pub fn url_for(uuid: &str, file_name: &str) -> String {
-    format!("/media/{uuid}/{file_name}")
+/// Address of a stored file as served by this module: `/media/{id}/{file_name}`.
+pub fn url_for(id: u64, file_name: &str) -> String {
+    format!("/media/{id}/{file_name}")
+}
+
+/// Settings under `settings.media` in the config file (all optional):
+///
+/// ```yaml
+/// settings:
+///   media:
+///     disk: s3-media        # name written to new rows (Spatie's `disk` column); default "default"
+///     prefix: ""            # key prefix, like Spatie's `media-library.prefix`
+///     disk_urls:            # public base URL per disk; public files are redirected there
+///       s3-media: https://cdn.example.com
+/// ```
+fn setting(ctx: &AppContext, path: &[&str]) -> Option<Value> {
+    let mut current = ctx.config.settings.as_ref()?.get("media")?;
+    for key in path {
+        current = current.get(key)?;
+    }
+    Some(current.clone())
+}
+
+fn setting_text(ctx: &AppContext, path: &[&str]) -> Option<String> {
+    setting(ctx, path)?
+        .as_str()
+        .map(|text| text.trim_matches('/').to_string())
+        .filter(|text| !text.is_empty())
+}
+
+pub fn prefix(ctx: &AppContext) -> String {
+    setting_text(ctx, &["prefix"]).unwrap_or_default()
+}
+
+pub fn disk_name(ctx: &AppContext) -> String {
+    setting_text(ctx, &["disk"]).unwrap_or_else(|| "default".to_string())
+}
+
+/// The file's own address on its disk (for example a CDN), when that disk has a public URL set.
+pub fn direct_url(ctx: &AppContext, item: &media::Model) -> Option<String> {
+    let base = setting(ctx, &["disk_urls", item.disk.as_str()])?;
+    let base = base.as_str()?.trim_end_matches('/');
+    let path = item.storage_path(&prefix(ctx));
+    (!base.is_empty()).then(|| format!("{base}/{path}"))
 }
 
 /// Builder for adding one file to a model, like Spatie's `FileAdder`.
@@ -27,7 +68,7 @@ pub struct FileAdder<'a> {
     name: Option<String>,
     file_name: Option<String>,
     custom_properties: Value,
-    order: Option<i32>,
+    order: Option<u32>,
 }
 
 impl<'a> FileAdder<'a> {
@@ -68,13 +109,13 @@ impl<'a> FileAdder<'a> {
         self
     }
 
-    pub fn set_order(mut self, order: i32) -> Self {
+    pub fn set_order(mut self, order: u32) -> Self {
         self.order = Some(order);
         self
     }
 
     /// Validates, stores and records the file, then trims the collection to its limit.
-    pub async fn to_media_collection(self, collection: &str) -> MediaResult<media_files::Model> {
+    pub async fn to_media_collection(self, collection: &str) -> MediaResult<media::Model> {
         let definition = self
             .collections
             .iter()
@@ -118,48 +159,58 @@ impl<'a> FileAdder<'a> {
         });
         let order = match self.order {
             Some(order) => order,
-            None => media_files::Entity::find()
-                .filter(media_files::Column::ModelType.eq(self.owner_type.as_str()))
-                .filter(media_files::Column::ModelId.eq(self.owner_id))
-                .filter(media_files::Column::CollectionName.eq(collection))
-                .order_by_desc(media_files::Column::OrderColumn)
+            None => media::Entity::find()
+                .filter(media::Column::ModelType.eq(self.owner_type.as_str()))
+                .filter(media::Column::ModelId.eq(self.owner_id.to_string()))
+                .filter(media::Column::CollectionName.eq(collection))
+                .order_by_desc(media::Column::OrderColumn)
                 .one(db)
                 .await?
-                .map_or(1, |last| last.order_column + 1),
+                .map_or(1, |last| last.order_column.unwrap_or(0) + 1),
         };
 
-        let path = format!("media/{uuid}/{file_name}");
-        self.ctx
-            .storage
-            .upload(Path::new(&path), &self.upload.bytes)
-            .await
-            .map_err(|error| MediaError::Storage(error.to_string()))?;
-
-        let inserted = media_files::ActiveModel {
+        // Like Spatie, the row comes first: the file's folder is the row's id.
+        let mut properties = match self.custom_properties {
+            Value::Object(map) => map,
+            _ => serde_json::Map::new(),
+        };
+        if definition.public {
+            properties.insert("public".to_string(), json!(true));
+        }
+        let now = chrono::Utc::now().fixed_offset();
+        let media = media::ActiveModel {
             model_type: Set(self.owner_type.clone()),
-            model_id: Set(self.owner_id),
-            uuid: Set(uuid),
+            model_id: Set(self.owner_id.to_string()),
+            uuid: Set(Some(uuid)),
             collection_name: Set(collection.to_string()),
             name: Set(name),
             file_name: Set(file_name),
-            mime_type: Set(mime.to_string()),
-            disk: Set("default".to_string()),
-            size: Set(i64::try_from(self.upload.bytes.len()).unwrap_or(i64::MAX)),
-            custom_properties: Set(self.custom_properties.to_string()),
-            order_column: Set(order),
-            is_public: Set(definition.public),
+            mime_type: Set(Some(mime.to_string())),
+            disk: Set(disk_name(self.ctx)),
+            conversions_disk: Set(None),
+            size: Set(u32::try_from(self.upload.bytes.len()).unwrap_or(u32::MAX)),
+            manipulations: Set("[]".to_string()),
+            custom_properties: Set(Value::Object(properties).to_string()),
+            generated_conversions: Set(Some("[]".to_string())),
+            responsive_images: Set("[]".to_string()),
+            order_column: Set(Some(order)),
+            created_at: Set(Some(now)),
+            updated_at: Set(Some(now)),
             ..Default::default()
         }
         .insert(db)
-        .await;
+        .await?;
 
-        let media = match inserted {
-            Ok(media) => media,
-            Err(error) => {
-                let _ = self.ctx.storage.delete(Path::new(&path)).await;
-                return Err(error.into());
-            }
-        };
+        let path = media.storage_path(&prefix(self.ctx));
+        if let Err(error) = self
+            .ctx
+            .storage
+            .upload(Path::new(&path), &self.upload.bytes)
+            .await
+        {
+            let _ = media::Entity::delete_by_id(media.id).exec(db).await;
+            return Err(MediaError::Storage(error.to_string()));
+        }
 
         if let Some(limit) = definition.keep_limit() {
             let items = list(self.ctx, &self.owner_type, self.owner_id, collection).await?;
@@ -179,23 +230,24 @@ pub async fn list(
     owner_type: &str,
     owner_id: i64,
     collection: &str,
-) -> MediaResult<Vec<media_files::Model>> {
-    Ok(media_files::Entity::find()
-        .filter(media_files::Column::ModelType.eq(owner_type))
-        .filter(media_files::Column::ModelId.eq(owner_id))
-        .filter(media_files::Column::CollectionName.eq(collection))
-        .order_by_asc(media_files::Column::OrderColumn)
-        .order_by_asc(media_files::Column::Id)
+) -> MediaResult<Vec<media::Model>> {
+    Ok(media::Entity::find()
+        .filter(media::Column::ModelType.eq(owner_type))
+        .filter(media::Column::ModelId.eq(owner_id.to_string()))
+        .filter(media::Column::CollectionName.eq(collection))
+        .order_by_asc(media::Column::OrderColumn)
+        .order_by_asc(media::Column::Id)
         .all(&ctx.db)
         .await?)
 }
 
 /// Removes the stored file and its row.
-pub async fn delete_item(ctx: &AppContext, item: &media_files::Model) -> MediaResult<()> {
+pub async fn delete_item(ctx: &AppContext, item: &media::Model) -> MediaResult<()> {
     // A file that is already gone from the disk must not block removing the row.
-    let _ = ctx.storage.delete(Path::new(&item.storage_path())).await;
-    media_files::Entity::delete_by_id(item.id)
-        .exec(&ctx.db)
-        .await?;
+    let _ = ctx
+        .storage
+        .delete(Path::new(&item.storage_path(&prefix(ctx))))
+        .await;
+    media::Entity::delete_by_id(item.id).exec(&ctx.db).await?;
     Ok(())
 }

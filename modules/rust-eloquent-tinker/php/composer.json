@@ -1,0 +1,22 @@
+{
+    "name": "local/rust-eloquent-tinker",
+    "description": "Eloquent and PsySH (the engine behind artisan tinker) pointed at the Rust app's database. Development only.",
+    "type": "project",
+    "require": {
+        "php": ">=8.2",
+        "illuminate/database": "^11.0",
+        "illuminate/events": "^11.0",
+        "psy/psysh": "^0.12",
+        "ramsey/uuid": "^4.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\Models\\": "models/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "minimum-stability": "stable"
+}

@@ -16,3 +16,9 @@ seed:
 
 test:
     cargo test --workspace
+
+tinker:
+    cargo run -- task tinker
+
+eloquent:
+    cargo run -- task tinker:eloquent

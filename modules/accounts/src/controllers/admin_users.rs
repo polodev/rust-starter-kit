@@ -64,7 +64,7 @@ async fn user_show_data(
     let image = user_owner(user.id)
         .get_first_media(ctx, LOGO_COLLECTION)
         .await?
-        .map(|media| json!({ "url": media.url(), "name": media.file_name, "kb": (media.size + 1023) / 1024 }));
+        .map(|media| json!({ "url": media.url(), "name": media.file_name, "kb": media.size.div_ceil(1024) }));
     let mut data = json!({
         "title": user.name,
         "image": image,
