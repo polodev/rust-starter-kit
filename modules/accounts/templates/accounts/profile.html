@@ -1,15 +1,42 @@
 {% extends "accounts/layout.html" %}
 {% block account_content %}
 <h1 class="text-2xl font-bold text-brand-navy dark:text-white">{{ t(key="profile-title", lang=tag) }}</h1>
-<dl class="mt-4 grid gap-4 text-sm sm:grid-cols-3">
-  <div><dt class="text-slate-500 dark:text-slate-400">{{ t(key="profile-email", lang=tag) }}</dt><dd class="font-medium">{{ email }}</dd></div>
-  <div><dt class="text-slate-500 dark:text-slate-400">{{ t(key="profile-role", lang=tag) }}</dt><dd class="font-medium">{% if role %}{{ role }}{% else %}{{ t(key="profile-no-role", lang=tag) }}{% endif %}</dd></div>
-  <div><dt class="text-slate-500 dark:text-slate-400">{{ t(key="profile-member-since", lang=tag) }}</dt><dd class="font-medium">{{ joined }}</dd></div>
-</dl>
-<form method="post" action="/account/profile" class="mt-6 max-w-md space-y-4">
-  <label class="block"><span class="mb-1 block text-sm font-medium">{{ t(key="profile-name", lang=tag) }}</span>
-    <input type="text" name="name" value="{{ name }}" required maxlength="80" autocomplete="name" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/30 dark:border-gray-600 dark:bg-gray-900 dark:text-slate-100"></label>
-  <p class="text-xs text-slate-500 dark:text-slate-400">{{ t(key="profile-email-note", lang=tag) }}</p>
-  <button type="submit" class="rounded-md bg-brand-amber px-5 py-2 font-medium text-white hover:bg-amber-600">{{ t(key="profile-save", lang=tag) }}</button>
-</form>
+
+<section class="mt-6" aria-labelledby="profile-details-heading">
+  <h2 id="profile-details-heading" class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ t(key="profile-details-title", lang=tag) }}</h2>
+  <dl class="rounded-xl border border-slate-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 divide-y divide-slate-200 text-sm dark:divide-gray-700">
+    <div class="grid gap-1 px-5 py-4 sm:grid-cols-[11rem_1fr] sm:items-center sm:gap-4">
+      <dt class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ t(key="profile-email", lang=tag) }}</dt>
+      <dd class="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span class="break-all font-medium text-slate-900 dark:text-slate-100">{{ email }}</span>
+        {% if email_verified %}<span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-500/15 dark:text-green-300" data-testid="email-verified"><i class="fa-solid fa-circle-check"></i>{{ t(key="profile-email-verified", lang=tag) }}</span>
+        {% else %}<span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-300" data-testid="email-not-verified"><i class="fa-solid fa-triangle-exclamation"></i>{{ t(key="profile-email-not-verified", lang=tag) }}</span>{% endif %}
+      </dd>
+    </div>
+    <div class="grid gap-1 px-5 py-4 sm:grid-cols-[11rem_1fr] sm:items-center sm:gap-4">
+      <dt class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ t(key="profile-role", lang=tag) }}</dt>
+      <dd class="font-medium text-slate-900 dark:text-slate-100">{% if role %}{{ role }}{% else %}{{ t(key="profile-no-role", lang=tag) }}{% endif %}</dd>
+    </div>
+    <div class="grid gap-1 px-5 py-4 sm:grid-cols-[11rem_1fr] sm:items-center sm:gap-4">
+      <dt class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ t(key="profile-member-since", lang=tag) }}</dt>
+      <dd class="font-medium text-slate-900 dark:text-slate-100">{{ joined }}</dd>
+    </div>
+  </dl>
+  {% if not email_verified %}
+  <div class="mt-3 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between" data-testid="email-not-verified-banner">
+    <p>{{ t(key="profile-not-verified-help", lang=tag) }}</p>
+    <a href="/email/verify" class="inline-flex shrink-0 items-center justify-center rounded-md bg-brand-amber px-4 py-2 font-medium text-white hover:bg-amber-600" data-testid="verify-email-link">{{ t(key="login-unverified-resend", lang=tag) }}</a>
+  </div>
+  {% endif %}
+</section>
+
+<section class="mt-8" aria-labelledby="profile-edit-heading">
+  <h2 id="profile-edit-heading" class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ t(key="profile-edit-title", lang=tag) }}</h2>
+  <form method="post" action="/account/profile" class="rounded-xl border border-slate-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 space-y-4 p-5">
+    <label class="block"><span class="mb-1 block text-sm font-medium">{{ t(key="profile-name", lang=tag) }}</span>
+      <input type="text" name="name" value="{{ name }}" required maxlength="80" autocomplete="name" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/30 dark:border-gray-600 dark:bg-gray-900 dark:text-slate-100"></label>
+    <p class="text-xs text-slate-500 dark:text-slate-400">{{ t(key="profile-email-note", lang=tag) }}</p>
+    <button type="submit" class="rounded-md bg-brand-amber px-5 py-2 font-medium text-white hover:bg-amber-600">{{ t(key="profile-save", lang=tag) }}</button>
+  </form>
+</section>
 {% endblock account_content %}

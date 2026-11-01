@@ -51,7 +51,12 @@ impl Task for Run {
         let Some(config) = config_or_skip(ctx, vars)? else {
             return Ok(());
         };
-        let connection = parse_database_uri(&ctx.config.database.uri)?;
+        let connection = parse_database_uri(
+            config
+                .database_uri
+                .as_deref()
+                .unwrap_or(&ctx.config.database.uri),
+        )?;
         println!("backing up database `{}` ...", connection.database);
         let stored = service::run(
             &config,

@@ -5,6 +5,7 @@ mod api_auth;
 mod auth;
 mod contact;
 mod demo_user;
+mod email_links;
 mod media_accounts;
 mod pages;
 mod pages_admin;

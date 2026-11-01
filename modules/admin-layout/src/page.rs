@@ -7,7 +7,7 @@ use axum::{
 };
 use loco_modular::MenuItem;
 use loco_rs::{controller::views::ViewRenderer, prelude::TeraView, Result};
-use module_auth::{Auth, AuthUser};
+use module_auth::{AuthUser, VerifiedAuth};
 use serde::Serialize;
 use serde_json::{json, Value};
 
@@ -103,7 +103,7 @@ impl<S: Send + Sync> FromRequestParts<S> for AdminPage {
     type Rejection = axum::response::Redirect;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let Auth(user) = Auth::from_request_parts(parts, state).await?;
+        let VerifiedAuth(user) = VerifiedAuth::from_request_parts(parts, state).await?;
         let menu = parts
             .extensions
             .get::<AdminMenu>()
@@ -135,6 +135,7 @@ mod tests {
             session_id: 1,
             name: "Ada".into(),
             email: "ada@example.com".into(),
+            email_verified: true,
             created_at: chrono::Utc::now().fixed_offset(),
             access: Access {
                 role: None,

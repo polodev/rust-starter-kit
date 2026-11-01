@@ -10,7 +10,11 @@ use serial_test::serial;
 
 use rust_starter::app::App;
 
+/// These tests dump the MySQL/MariaDB test database; they are skipped when the build is for PostgreSQL.
 fn dump_tool_missing() -> bool {
+    if loco_database::BUILT_FOR != sea_orm::DatabaseBackend::MySql {
+        return true;
+    }
     std::process::Command::new("mysqldump")
         .arg("--version")
         .output()
@@ -195,4 +199,124 @@ fn unconfigured_s3_credentials_and_the_default_retention_match_spatie() {
     }));
     assert!(broken.unwrap_err().to_string().contains("needs a bucket"));
     let _ = DiskConfig::Local { path: "x".into() };
+}
+
+/// Needs `pg_dump`, `psql` and a PostgreSQL server: set `TEST_POSTGRES_URL` (an address whose user may create
+/// databases, for example `postgres://polodev@127.0.0.1:5432/postgres`). Without it the test is skipped.
+#[tokio::test]
+#[serial]
+async fn a_postgresql_database_is_dumped_stored_and_restores_with_psql() {
+    let Ok(admin_url) = std::env::var("TEST_POSTGRES_URL") else {
+        eprintln!("skipped: TEST_POSTGRES_URL is not set");
+        return;
+    };
+    let admin = parse_database_uri(&admin_url).unwrap();
+    let psql = |database: &str, sql: &str| {
+        std::process::Command::new(
+            module_db_backup::dump_binary(module_db_backup::Kind::Postgres, None)
+                .unwrap()
+                .replace("pg_dump", "psql"),
+        )
+        .args([
+            "-h",
+            &admin.host,
+            "-p",
+            &admin.port,
+            "-U",
+            &admin.username,
+            "-d",
+            database,
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-q",
+            "-c",
+            sql,
+        ])
+        .env("PGPASSWORD", &admin.password)
+        .output()
+        .unwrap()
+    };
+    let psql_file = |database: &str, file: &std::path::Path| {
+        std::process::Command::new(
+            module_db_backup::dump_binary(module_db_backup::Kind::Postgres, None)
+                .unwrap()
+                .replace("pg_dump", "psql"),
+        )
+        .args([
+            "-h",
+            &admin.host,
+            "-p",
+            &admin.port,
+            "-U",
+            &admin.username,
+            "-d",
+            database,
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-q",
+            "-f",
+        ])
+        .arg(file)
+        .env("PGPASSWORD", &admin.password)
+        .output()
+        .unwrap()
+    };
+    let source = format!("backup_test_source_{}", std::process::id());
+    let restored = format!("backup_test_restored_{}", std::process::id());
+    for name in [&source, &restored] {
+        psql("postgres", &format!("DROP DATABASE IF EXISTS {name}"));
+    }
+    assert!(psql("postgres", &format!("CREATE DATABASE {source}"))
+        .status
+        .success());
+    assert!(psql(&source, "CREATE TABLE notes (id serial PRIMARY KEY, body text NOT NULL, extra jsonb); INSERT INTO notes (body, extra) VALUES ('héllo wörld', '{\"a\":1}'), ('second', NULL)").status.success());
+
+    let folder = std::env::temp_dir().join(format!("db-backup-pg-{}", std::process::id()));
+    let config = config(&folder);
+    let mut connection = admin.clone();
+    connection.database = source.clone();
+    let stored = run(&config, &connection, None, None, Utc::now())
+        .await
+        .unwrap();
+    assert_eq!(stored.len(), 2, "stored on both disks");
+
+    let mut sql = String::new();
+    flate2_read(&folder.join("first").join(&stored[0].path), &mut sql);
+    assert!(
+        sql.contains("CREATE TABLE public.notes") && sql.contains("héllo wörld"),
+        "a PostgreSQL dump"
+    );
+    assert!(!sql.contains("ENGINE=InnoDB"), "not a MySQL dump");
+
+    assert!(psql("postgres", &format!("CREATE DATABASE {restored}"))
+        .status
+        .success());
+    // A dump holds psql meta-commands, so it is restored the way a person would: psql reads it as a file.
+    let dump_file = folder.join("restore.sql");
+    std::fs::write(&dump_file, &sql).unwrap();
+    let restore = psql_file(&restored, &dump_file);
+    assert!(
+        restore.status.success(),
+        "{}",
+        String::from_utf8_lossy(&restore.stderr)
+    );
+    let count = psql(&restored, "DO $$ BEGIN IF (SELECT count(*) FROM notes) <> 2 THEN RAISE EXCEPTION 'wrong row count'; END IF; END $$");
+    assert!(
+        count.status.success(),
+        "{}",
+        String::from_utf8_lossy(&count.stderr)
+    );
+
+    // A database that does not exist is reported and leaves no file behind.
+    connection.database = "no_such_database_here".to_string();
+    let error = run(&config, &connection, None, None, Utc::now())
+        .await
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("failed"), "{error}");
+
+    for name in [&source, &restored] {
+        psql("postgres", &format!("DROP DATABASE IF EXISTS {name}"));
+    }
+    let _ = std::fs::remove_dir_all(&folder);
 }

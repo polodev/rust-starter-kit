@@ -24,6 +24,8 @@ use sea_orm::{
 use serde_json::Value;
 use uuid::Uuid;
 
+use loco_database::UnsignedBigInt;
+
 use crate::entities::{failed_jobs, jobs, queue_jobs};
 
 const MAX_TRACE_CHARS: usize = 60_000;
@@ -125,7 +127,7 @@ pub async fn queued(ctx: &AppContext, info: &JobInfo) -> Result<String> {
         .job_id)
 }
 
-async fn finish(ctx: &AppContext, id: u64, outcome: &Result<()>) {
+async fn finish(ctx: &AppContext, id: UnsignedBigInt, outcome: &Result<()>) {
     let Ok(Some(row)) = queue_jobs::Entity::find_by_id(id).one(&ctx.db).await else {
         return;
     };

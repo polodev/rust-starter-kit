@@ -26,13 +26,32 @@ CREATE TABLE IF NOT EXISTS `activity_log` (
   KEY `activity_log_created_at_index` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
 
+/// The same table for PostgreSQL (Spatie's PostgreSQL layout; index names are unique per schema there).
+const CREATE_ACTIVITY_LOG_POSTGRES: &[&str] = &[
+    "CREATE TABLE IF NOT EXISTS activity_log (
+  id bigserial PRIMARY KEY,
+  log_name varchar(191),
+  description text NOT NULL,
+  subject_type varchar(191),
+  event varchar(150),
+  subject_id varchar(50),
+  causer_type varchar(191),
+  causer_id varchar(50),
+  properties text,
+  batch_uuid varchar(36),
+  created_at timestamptz,
+  updated_at timestamptz
+)",
+    "CREATE INDEX IF NOT EXISTS activity_log_subject_index ON activity_log (subject_type, subject_id)",
+    "CREATE INDEX IF NOT EXISTS activity_log_causer_index ON activity_log (causer_type, causer_id)",
+    "CREATE INDEX IF NOT EXISTS activity_log_log_name_index ON activity_log (log_name)",
+    "CREATE INDEX IF NOT EXISTS activity_log_created_at_index ON activity_log (created_at)",
+];
+
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        m.get_connection()
-            .execute_unprepared(CREATE_ACTIVITY_LOG)
-            .await?;
-        Ok(())
+        loco_database::run_ddl(m, CREATE_ACTIVITY_LOG, CREATE_ACTIVITY_LOG_POSTGRES).await
     }
 
     /// The table may be shared with a Laravel app, so it is never dropped here.

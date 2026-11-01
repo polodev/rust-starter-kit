@@ -40,6 +40,27 @@ Project rules that differ from a stock Loco app: features are `modules/*` crates
 every table has exactly one base migration file in its module (`tests/migrations.rs` checks it), so change the table's own migration and run `cargo run -- db reset`, while someone who has cloned the starter adds new files for their own changes; all visible text is a Fluent key in both
 `en-US` and `bn-BD`; the API is under `/api/v1`; run **one** `cargo test` at a time (shared test database).
 
+## Two databases, one codebase
+
+The app is built for MariaDB/MySQL (default) or PostgreSQL (`--features postgres`); `DATABASE_URL` must match the build.
+In entities use `loco_database::UnsignedBigInt` and friends instead of `u64`/`u32`; in raw SQL migrations give both versions
+to `loco_database::run_ddl`; search boxes use `loco_database::contains_ignoring_case`; do not write MySQL-only SQL. Run the tests on **both** databases when you touch the database
+layer (commands in `packages/loco-database/README.md`; tutorial `tutorials/28-mysql-or-postgresql-per-app.md`).
+
+## Background jobs and commands (Laravel developers start here)
+
+- A **command** is a Loco task: `cargo modular make:command Name --module=x`, run with `cargo run -- task x:name key:value`,
+  scheduled in the module's `schedule()`.
+- A **database job** (Laravel's `jobs` table, `make:job` + `dispatch`) is a struct implementing
+  `module_queue_watcher::DatabaseJob`. Dispatch: `dispatch(Job { .. }).on_queue("emails").delay(30).send(&ctx.db)`. List it in
+  the owning module's `Module::database_jobs`. Run: `cargo run -- task jobs:work queue:emails,default`. Failed jobs:
+  `jobs:failed`, `jobs:retry-failed which:all`, `jobs:flush-failed`. The tables are Laravel's schema, so a Laravel SQL
+  export imports as is.
+- **Loco workers** (`BackgroundWorker`, Redis) are for high volume; mail uses `module_mail::dispatch` (its own queue,
+  `task mail:work`).
+- Details: `modules/queue-watcher/README.md` and `tutorials/26-commands-and-jobs-for-laravel-developers.md`. When you add or
+  change job behaviour, update both and `docs/CONVENTIONS.md`.
+
 ## The three rules that prevent most mistakes
 
 1. **Generate, then edit.** `cargo loco generate <thing>` writes the file *and*

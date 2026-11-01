@@ -4,6 +4,7 @@ mod entities;
 mod guard;
 mod middleware;
 mod migrations;
+pub mod security_tokens;
 pub mod session;
 
 use async_trait::async_trait;
@@ -13,8 +14,8 @@ use loco_rs::{app::AppContext, controller::Routes, task::Tasks};
 use sea_orm_migration::MigrationTrait;
 
 pub use controllers::valid_email;
-pub use entities::{sessions, users};
-pub use guard::{safe_next, same_origin, Auth, AuthUser, OptionalAuth};
+pub use entities::{sessions, user_security_tokens, users};
+pub use guard::{safe_next, same_origin, Auth, AuthUser, OptionalAuth, VerifiedAuth};
 
 pub struct AuthModule;
 
@@ -41,6 +42,34 @@ impl Module for AuthModule {
             (
                 "auth/register.html",
                 include_str!("../templates/auth/register.html"),
+            ),
+            (
+                "auth/email_request.html",
+                include_str!("../templates/auth/email_request.html"),
+            ),
+            (
+                "auth/verify_notice.html",
+                include_str!("../templates/auth/verify_notice.html"),
+            ),
+            (
+                "auth/reset_password.html",
+                include_str!("../templates/auth/reset_password.html"),
+            ),
+            (
+                "auth/sign_in_link_confirm.html",
+                include_str!("../templates/auth/sign_in_link_confirm.html"),
+            ),
+            (
+                "auth/mail_link.html",
+                include_str!("../templates/auth/mail_link.html"),
+            ),
+            (
+                "auth/mail_link.txt",
+                include_str!("../templates/auth/mail_link.txt"),
+            ),
+            (
+                "auth/mail_subject.txt",
+                include_str!("../templates/auth/mail_subject.txt"),
             ),
         ]
     }

@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 22 of 25** | [Index](00-index.md) | [Previous: 21 Conventions](21-conventions.md) | [Next: 23 PDF and email](23-pdf-and-email.md)
+**Tutorial 22 of 28** | [Index](00-index.md) | [Previous: 21 Conventions](21-conventions.md) | [Next: 23 PDF and email](23-pdf-and-email.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -29,6 +29,9 @@
 23. [PDF and email](23-pdf-and-email.md)  
 24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
 25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
+26. [Commands and jobs for Laravel developers](26-commands-and-jobs-for-laravel-developers.md)  
+27. [PostgreSQL for MySQL users](27-postgresql-for-mysql-users.md)  
+28. [MySQL or PostgreSQL, one choice per app](28-mysql-or-postgresql-per-app.md)  
 
 </details>
 <!-- nav:end -->
@@ -105,7 +108,7 @@ BACKUP_SECRET_ACCESS_KEY=...
 
 The app reads `.env` at startup. Use a private bucket. With the switch off, nothing runs and nothing is checked. Other disk types (a local folder, several destinations) are in the module README.
 
-It needs `mysqldump` on the machine. The password goes to the dump through the environment, never the command line. The scheduler runs clean (01:00), run (01:30) and monitor (03:00) daily, and does nothing until the settings exist. Restore: `gunzip -c file.sql.gz | mysql -u root my_database`. Full settings: `modules/db-backup/README.md`.
+It needs `mysqldump` (MySQL, MariaDB) or `pg_dump` (PostgreSQL) on the machine; the database address decides which, like Spatie's `mysql` and `pgsql` dumpers, and `settings.db_backup.database_uri` can point at a database other than the app's own. The password goes to the dump through the environment, never the command line. The scheduler runs clean (01:00), run (01:30) and monitor (03:00) daily, and does nothing until the settings exist. Restore: `gunzip -c file.sql.gz | mysql -u root my_database`, or for PostgreSQL `gunzip -c file.sql.gz | psql my_database`. Full settings: `modules/db-backup/README.md`.
 
 <!-- foot:start -->
 ---

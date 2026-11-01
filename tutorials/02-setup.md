@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 2 of 25** | [Index](00-index.md) | [Previous: 1 Introduction](01-introduction.md) | [Next: 3 Rust essentials](03-rust-essentials.md)
+**Tutorial 2 of 28** | [Index](00-index.md) | [Previous: 1 Introduction](01-introduction.md) | [Next: 3 Rust essentials](03-rust-essentials.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -29,6 +29,9 @@
 23. [PDF and email](23-pdf-and-email.md)  
 24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
 25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
+26. [Commands and jobs for Laravel developers](26-commands-and-jobs-for-laravel-developers.md)  
+27. [PostgreSQL for MySQL users](27-postgresql-for-mysql-users.md)  
+28. [MySQL or PostgreSQL, one choice per app](28-mysql-or-postgresql-per-app.md)  
 
 </details>
 <!-- nav:end -->
@@ -44,6 +47,8 @@ rustc --version && cargo --version
 
 # MariaDB must be running on 127.0.0.1:3306 (Herd, Homebrew, or Docker all work)
 mysql -uroot -e "select version()"
+# Redis must be running too (the background job queue): brew install redis && brew services start redis
+redis-cli ping                  # PONG
 ```
 
 Optional: `cargo install just` for the shortcuts in the `justfile`.
@@ -110,6 +115,7 @@ Try these URLs:
 | Symptom | Fix |
 |---|---|
 | `Connection refused` | MariaDB is not running on port 3306 |
+| Jobs never run, `Connection refused` on 6379 | Redis is not running (`brew services start redis`) |
 | `Unknown database` | Create the database (see above) |
 | Page has no styling | Build the CSS file (see Tailwind step) |
 | `refusing to boot the test environment` | `TEST_DATABASE_URL` does not end in `_test`. This is the safety guard working |

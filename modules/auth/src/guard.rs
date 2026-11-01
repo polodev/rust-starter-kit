@@ -14,12 +14,17 @@ pub struct AuthUser {
     pub session_id: i64,
     pub name: String,
     pub email: String,
+    pub email_verified: bool,
     pub created_at: chrono::DateTime<chrono::FixedOffset>,
     pub access: Access,
 }
 
 /// Requires a signed-in person; otherwise redirects to the login page and returns afterwards.
 pub struct Auth(pub AuthUser);
+
+/// Like Laravel's `auth` + `verified` middleware: a signed-in person whose email address is verified. A signed-in
+/// person who is not verified is sent to the "verify your email" notice page.
+pub struct VerifiedAuth(pub AuthUser);
 
 /// The signed-in person if there is one.
 pub struct OptionalAuth(pub Option<AuthUser>);
@@ -41,6 +46,19 @@ impl<S: Send + Sync> FromRequestParts<S> for Auth {
                     query_escape(&next)
                 )))
             }
+        }
+    }
+}
+
+impl<S: Send + Sync> FromRequestParts<S> for VerifiedAuth {
+    type Rejection = Redirect;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let Auth(user) = Auth::from_request_parts(parts, state).await?;
+        if user.email_verified {
+            Ok(VerifiedAuth(user))
+        } else {
+            Err(Redirect::to("/email/verify"))
         }
     }
 }

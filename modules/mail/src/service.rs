@@ -15,27 +15,19 @@ fn joined(addresses: &[&Vec<String>]) -> String {
     all.join(", ").chars().take(1000).collect()
 }
 
-/// Sends with the app's `settings.mail` and records it.
-pub async fn send(ctx: &AppContext, mail: Mail) -> Result<mail_log::Model> {
-    let config = MailConfig::load(ctx)?;
-    send_with(&ctx.db, &config, mail).await
-}
-
-/// Sends with the given settings and records it. A delivery problem is written to the log row and returned
-/// as an error; a mail that cannot even be built (no recipient, bad address) is refused before anything is logged.
-pub async fn send_with<C: ConnectionTrait>(
+/// Writes the `queued` row of `mail_log` for a mail about to be sent (now or by the worker).
+pub(crate) async fn record_queued<C: ConnectionTrait>(
     db: &C,
     config: &MailConfig,
-    mail: Mail,
+    mail: &Mail,
 ) -> Result<mail_log::Model> {
-    let message = mail.build(config)?;
     let now = Utc::now().fixed_offset();
     let names: Vec<&str> = mail
         .attachments
         .iter()
         .map(|a| a.filename.as_str())
         .collect();
-    let row =
+    Ok(
         mail_log::ActiveModel {
             recipients: Set(joined(&[&mail.to, &mail.cc, &mail.bcc])),
             from_address: Set(config.from_address.clone()),
@@ -51,7 +43,25 @@ pub async fn send_with<C: ConnectionTrait>(
             ..Default::default()
         }
         .insert(db)
-        .await?;
+        .await?,
+    )
+}
+
+/// Sends with the app's `settings.mail` and records it.
+pub async fn send(ctx: &AppContext, mail: Mail) -> Result<mail_log::Model> {
+    let config = MailConfig::load(ctx)?;
+    send_with(&ctx.db, &config, mail).await
+}
+
+/// Sends with the given settings and records it. A delivery problem is written to the log row and returned
+/// as an error; a mail that cannot even be built (no recipient, bad address) is refused before anything is logged.
+pub async fn send_with<C: ConnectionTrait>(
+    db: &C,
+    config: &MailConfig,
+    mail: Mail,
+) -> Result<mail_log::Model> {
+    let message = mail.build(config)?;
+    let row = record_queued(db, config, &mail).await?;
 
     let outcome = transport::deliver(config, message).await;
     let finished = Utc::now().fixed_offset();

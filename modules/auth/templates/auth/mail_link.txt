@@ -1,0 +1,8 @@
+{{ t(key="mail-greeting", lang=tag) }} {{ name }},
+
+{{ t(key=intro_key, lang=tag) }}
+
+{{ url }}
+
+{{ t(key="mail-link-once", lang=tag) }}
+{{ t(key="mail-ignore", lang=tag) }}

@@ -102,3 +102,11 @@ auth:
 cache:
   kind: InMem
   max_capacity: 1000
+
+# Settings read by the modules. Mail is captured in memory so tests can read what would have been sent.
+settings:
+  mail:
+    driver: capture
+    delivery: now
+    from_address: noreply@example.com
+    from_name: Rust Starter

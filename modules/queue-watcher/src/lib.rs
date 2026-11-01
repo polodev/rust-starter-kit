@@ -4,6 +4,7 @@
 
 mod commands;
 mod controllers;
+mod database_queue;
 mod entities;
 mod migrations;
 mod tracker;
@@ -13,6 +14,11 @@ use loco_modular::{MenuItem, Module, ScheduledJob};
 use loco_rs::{controller::Routes, task::Tasks};
 use sea_orm_migration::MigrationTrait;
 
+pub use database_queue::{
+    database_job, dispatch, flush_failed, retry_failed, run_worker, spawn_embedded_worker,
+    work_once, DatabaseJob, JobsFailed, JobsFlushFailed, JobsRetryFailed, JobsWork,
+    PendingDispatch,
+};
 pub use entities::{failed_jobs, jobs, queue_jobs};
 pub use tracker::{mark_stale, purge, queued, stats, track, track_queued, JobInfo, Stats};
 

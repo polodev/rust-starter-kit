@@ -13,7 +13,7 @@ use crate::{
 };
 
 /// Address of a stored file as served by this module: `/media/{id}/{file_name}`.
-pub fn url_for(id: u64, file_name: &str) -> String {
+pub fn url_for(id: loco_database::UnsignedBigInt, file_name: &str) -> String {
     format!("/media/{id}/{file_name}")
 }
 
@@ -169,7 +169,7 @@ impl<'a> FileAdder<'a> {
                 .collect()
         });
         let order = match self.order {
-            Some(order) => order,
+            Some(order) => loco_database::int(order),
             None => media::Entity::find()
                 .filter(media::Column::ModelType.eq(self.owner_type.as_str()))
                 .filter(media::Column::ModelId.eq(self.owner_id.to_string()))
@@ -199,7 +199,9 @@ impl<'a> FileAdder<'a> {
             mime_type: Set(Some(mime.to_string())),
             disk: Set(disk_name(self.ctx)),
             conversions_disk: Set(None),
-            size: Set(u32::try_from(self.upload.bytes.len()).unwrap_or(u32::MAX)),
+            size: Set(loco_database::int(
+                u32::try_from(self.upload.bytes.len()).unwrap_or(u32::MAX),
+            )),
             manipulations: Set("[]".to_string()),
             custom_properties: Set(Value::Object(properties).to_string()),
             generated_conversions: Set(Some("[]".to_string())),

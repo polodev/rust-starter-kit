@@ -62,5 +62,9 @@ impl Task for MarkStale {
 pub fn register(tasks: &mut Tasks) {
     tasks.register(Purge);
     tasks.register(MarkStale);
+    // `jobs:work` needs the handlers of every module, so the app registers it (src/app.rs).
+    tasks.register(crate::JobsFailed);
+    tasks.register(crate::JobsRetryFailed);
+    tasks.register(crate::JobsFlushFailed);
     // tasks-inject (do not remove)
 }

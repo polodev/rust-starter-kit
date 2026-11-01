@@ -1,0 +1,14 @@
+[package]
+name = "loco-database"
+version = "0.1.0"
+edition = "2021"
+description = "Helpers that let one codebase run on MySQL/MariaDB or PostgreSQL, chosen when the app is built"
+publish = false
+
+[features]
+# Build for PostgreSQL: the "unsigned" aliases become signed integers, because PostgreSQL has no unsigned types.
+postgres = []
+
+[dependencies]
+sea-orm = { workspace = true }
+sea-orm-migration = { workspace = true }

@@ -21,7 +21,7 @@ use loco_modular::{Module, ScheduledJob};
 use loco_rs::task::Tasks;
 
 pub use config::{BackupConfig, DiskConfig, Retention};
-pub use dump::{parse_database_uri, Connection};
+pub use dump::{dump_binary, parse_database_uri, Connection, Kind};
 pub use retention::{to_delete, Backup};
 pub use service::{clean, list, monitor, run, Cleaned, Health, Stored};
 

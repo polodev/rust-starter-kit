@@ -23,19 +23,34 @@ CREATE TABLE IF NOT EXISTS `mail_log` (
   KEY `mail_log_created_at_index` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
 
+/// The same table for PostgreSQL.
+const CREATE_MAIL_LOG_POSTGRES: &[&str] = &[
+    "CREATE TABLE IF NOT EXISTS mail_log (
+  id bigserial PRIMARY KEY,
+  recipients varchar(1000) NOT NULL,
+  from_address varchar(255) NOT NULL,
+  subject varchar(255) NOT NULL,
+  driver varchar(20) NOT NULL,
+  status varchar(16) NOT NULL,
+  attempts integer NOT NULL DEFAULT 0,
+  error text,
+  provider_id varchar(255),
+  attachments varchar(1000),
+  sent_at timestamptz,
+  created_at timestamptz,
+  updated_at timestamptz
+)",
+    "CREATE INDEX IF NOT EXISTS mail_log_status_index ON mail_log (status)",
+    "CREATE INDEX IF NOT EXISTS mail_log_created_at_index ON mail_log (created_at)",
+];
+
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        m.get_connection()
-            .execute_unprepared(CREATE_MAIL_LOG)
-            .await?;
-        Ok(())
+        loco_database::run_ddl(m, CREATE_MAIL_LOG, CREATE_MAIL_LOG_POSTGRES).await
     }
 
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        m.get_connection()
-            .execute_unprepared("DROP TABLE IF EXISTS `mail_log`")
-            .await?;
-        Ok(())
+        loco_database::drop_table_if_exists(m, "mail_log").await
     }
 }

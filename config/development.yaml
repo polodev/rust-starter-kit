@@ -43,7 +43,7 @@ workers:
   #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
   #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
   #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
-  mode: BackgroundAsync
+  mode: "<%= get_env(name="WORKERS_MODE", default="BackgroundQueue") %>"
 
   
 
@@ -115,6 +115,15 @@ auth:
     # `name:`. A YAML list of these tries each in order and uses the first
     # that yields a token. See https://loco.rs/docs/how-to/jwt-locations
 
+# Background jobs (Loco workers) are stored in Redis, so Redis is required. Use a database number of your own per app
+# (the number at the end of the URL, 0-15). A worker's `fn queue()` picks a named queue; `start --worker emails,default`
+# listens to them (first name = most important).
+queue:
+  kind: Redis
+  uri: "<%= get_env(name="QUEUE_REDIS_URL", default="redis://127.0.0.1:6379/5") %>"
+  dangerously_flush: false
+  num_workers: 4
+
 # Short-lived cache used by `loco_modular::remember` (the Cache::remember equivalent).
 cache:
   kind: InMem
@@ -143,9 +152,19 @@ settings:
       keep_monthly_months: 4
       keep_yearly_years: 2
     monitor_max_age_days: 1
+  # Laravel-style database queue (tables jobs and failed_jobs). Workers: `task jobs:work queue:emails,default`.
+  database_queue:
+    # true runs a worker inside the web server (development); production runs `jobs:work` under Supervisor instead.
+    embedded_worker: "<%= get_env(name="JOBS_EMBEDDED_WORKER", default="true") %>"
+    # queues the worker listens to, most important first
+    queues: "<%= get_env(name="JOBS_QUEUES", default="default") %>"
   mail:
     # Sending email (module mail). driver: ses | smtp | log | capture. `log` writes .eml files and sends nothing.
     driver: "<%= get_env(name="MAIL_DRIVER", default="log") %>"
+    # queue: mails go to the database table mail_queue and a worker sends them (retried up to 3 times). now: sent while the request waits.
+    delivery: "<%= get_env(name="MAIL_DELIVERY", default="queue") %>"
+    # true runs the worker inside the web server; production runs `mail:work` under Supervisor instead.
+    embedded_worker: "<%= get_env(name="MAIL_EMBEDDED_WORKER", default="true") %>"
     from_address: "<%= get_env(name="MAIL_FROM_ADDRESS", default="noreply@example.com") %>"
     from_name: "<%= get_env(name="MAIL_FROM_NAME", default="Rust Starter") %>"
     log_path: storage/mail

@@ -112,6 +112,15 @@ pub async fn delete_others(db: &DatabaseConnection, user_id: i64, keep_id: i64) 
     Ok(result.rows_affected)
 }
 
+/// Signs the person out everywhere (after a password reset).
+pub async fn delete_all_for_user(db: &DatabaseConnection, user_id: i64) -> Result<u64> {
+    let result = sessions::Entity::delete_many()
+        .filter(sessions::Column::UserId.eq(user_id))
+        .exec(db)
+        .await?;
+    Ok(result.rows_affected)
+}
+
 /// Removes expired sessions; returns how many.
 pub async fn prune(db: &DatabaseConnection) -> Result<u64> {
     let result = sessions::Entity::delete_many()

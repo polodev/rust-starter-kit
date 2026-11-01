@@ -1,3 +1,4 @@
+use loco_database::{UnsignedBigInt, UnsignedInt, UnsignedSmallInt};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -10,18 +11,18 @@ pub const STATUSES: [&str; 2] = [SUCCESS, FAILED];
 #[sea_orm(table_name = "ai_api_logs")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: u64,
+    pub id: UnsignedBigInt,
     pub kind: String,
     pub provider: String,
     pub model: String,
     pub purpose: Option<String>,
     pub status: String,
-    pub http_status: Option<u16>,
-    pub duration_ms: u32,
-    pub input_tokens: u32,
-    pub output_tokens: u32,
+    pub http_status: Option<UnsignedSmallInt>,
+    pub duration_ms: UnsignedInt,
+    pub input_tokens: UnsignedInt,
+    pub output_tokens: UnsignedInt,
     pub cost: Option<f64>,
-    pub image_count: u16,
+    pub image_count: UnsignedSmallInt,
     pub sensitive: bool,
     #[sea_orm(column_type = "Text", nullable)]
     pub prompt: Option<String>,

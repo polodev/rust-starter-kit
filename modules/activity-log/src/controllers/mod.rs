@@ -142,7 +142,10 @@ async fn index(
         select = select.filter(activity_log::Column::Event.eq(event.as_str()));
     }
     if let Some(search) = &search {
-        select = select.filter(activity_log::Column::Description.contains(search.as_str()));
+        select = select.filter(loco_database::contains_ignoring_case(
+            activity_log::Column::Description,
+            search.as_str(),
+        ));
     }
     let paginator = select
         .order_by_desc(activity_log::Column::Id)
@@ -230,7 +233,7 @@ async fn show(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
     page: AdminPage,
-    Path(id): Path<u64>,
+    Path(id): Path<loco_database::UnsignedBigInt>,
 ) -> Result<Response> {
     if !page.can("activity_logs.view") {
         return page.forbidden(&v);
@@ -269,7 +272,7 @@ async fn delete(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
     page: AdminPage,
-    Path(id): Path<u64>,
+    Path(id): Path<loco_database::UnsignedBigInt>,
 ) -> Result<Response> {
     if !page.can("activity_logs.manage") {
         return page.forbidden(&v);

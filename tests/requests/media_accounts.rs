@@ -1375,7 +1375,7 @@ async fn rows_written_by_laravel_spatie_are_read_served_and_extended_in_their_id
         assert!(!row.is_public(), "imported files stay private until a collection opts in");
 
         // Rows whose owner key is not a number are still readable, just not by this numeric API.
-        let other = module_media::media::Entity::find_by_id(4243u64).one(&ctx.db).await.unwrap().unwrap();
+        let other = module_media::media::Entity::find_by_id(loco_database::big_int(4243)).one(&ctx.db).await.unwrap().unwrap();
         assert_eq!((other.owner_id(), other.generated_conversions, other.order_column), (None, None, None));
 
         // Private: a stranger gets nothing, staff with media.view get the file from {id}/{file}.

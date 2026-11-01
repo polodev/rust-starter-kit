@@ -16,6 +16,7 @@ use axum::{
     Form,
 };
 use chrono::{DateTime, Utc};
+use loco_database::{UnsignedBigInt, UnsignedInt};
 use loco_rs::prelude::*;
 use module_admin_layout::AdminPage;
 use module_auth::same_origin;
@@ -90,7 +91,8 @@ fn time(at: Option<DateTime<chrono::FixedOffset>>) -> Option<String> {
     at.map(|at| at.format("%Y-%m-%d %H:%M:%S").to_string())
 }
 
-fn unix_time(seconds: u32) -> String {
+fn unix_time(seconds: UnsignedInt) -> String {
+    let seconds = loco_database::to_u32(seconds);
     DateTime::<Utc>::from_timestamp(i64::from(seconds), 0)
         .map(|at| at.format("%Y-%m-%d %H:%M:%S").to_string())
         .unwrap_or_default()
@@ -213,9 +215,18 @@ async fn jobs_index(
     if let Some(search) = &search {
         select = select.filter(
             Condition::any()
-                .add(queue_jobs::Column::Name.contains(search.as_str()))
-                .add(queue_jobs::Column::JobId.contains(search.as_str()))
-                .add(queue_jobs::Column::JobClass.contains(search.as_str())),
+                .add(loco_database::contains_ignoring_case(
+                    queue_jobs::Column::Name,
+                    search.as_str(),
+                ))
+                .add(loco_database::contains_ignoring_case(
+                    queue_jobs::Column::JobId,
+                    search.as_str(),
+                ))
+                .add(loco_database::contains_ignoring_case(
+                    queue_jobs::Column::JobClass,
+                    search.as_str(),
+                )),
         );
     }
     let paginator = select
@@ -259,7 +270,7 @@ async fn job_show(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
     page: AdminPage,
-    Path(id): Path<u64>,
+    Path(id): Path<UnsignedBigInt>,
 ) -> Result<Response> {
     require!(page, v, "queue.view");
     let item = queue_jobs::Entity::find_by_id(id)
@@ -296,7 +307,7 @@ async fn job_delete(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
     page: AdminPage,
-    Path(id): Path<u64>,
+    Path(id): Path<UnsignedBigInt>,
 ) -> Result<Response> {
     require_change!(page, v, headers);
     if queue_jobs::Entity::delete_by_id(id)
@@ -418,7 +429,7 @@ async fn pending_show(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
     page: AdminPage,
-    Path(id): Path<u64>,
+    Path(id): Path<UnsignedBigInt>,
 ) -> Result<Response> {
     require!(page, v, "queue.view");
     let item = jobs::Entity::find_by_id(id)
@@ -450,7 +461,7 @@ async fn pending_delete(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
     page: AdminPage,
-    Path(id): Path<u64>,
+    Path(id): Path<UnsignedBigInt>,
 ) -> Result<Response> {
     require_change!(page, v, headers);
     if jobs::Entity::delete_by_id(id)
@@ -489,10 +500,22 @@ async fn failed_index(
     if let Some(search) = &search {
         select = select.filter(
             Condition::any()
-                .add(failed_jobs::Column::Uuid.contains(search.as_str()))
-                .add(failed_jobs::Column::Queue.contains(search.as_str()))
-                .add(failed_jobs::Column::Exception.contains(search.as_str()))
-                .add(failed_jobs::Column::Payload.contains(search.as_str())),
+                .add(loco_database::contains_ignoring_case(
+                    failed_jobs::Column::Uuid,
+                    search.as_str(),
+                ))
+                .add(loco_database::contains_ignoring_case(
+                    failed_jobs::Column::Queue,
+                    search.as_str(),
+                ))
+                .add(loco_database::contains_ignoring_case(
+                    failed_jobs::Column::Exception,
+                    search.as_str(),
+                ))
+                .add(loco_database::contains_ignoring_case(
+                    failed_jobs::Column::Payload,
+                    search.as_str(),
+                )),
         );
     }
     let paginator = select
@@ -528,7 +551,7 @@ async fn failed_show(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
     page: AdminPage,
-    Path(id): Path<u64>,
+    Path(id): Path<UnsignedBigInt>,
 ) -> Result<Response> {
     require!(page, v, "queue.view");
     let item = failed_jobs::Entity::find_by_id(id)
@@ -557,7 +580,7 @@ async fn failed_delete(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
     page: AdminPage,
-    Path(id): Path<u64>,
+    Path(id): Path<UnsignedBigInt>,
 ) -> Result<Response> {
     require_change!(page, v, headers);
     if failed_jobs::Entity::delete_by_id(id)

@@ -288,8 +288,8 @@ async fn register_validates_input(
 
 #[tokio::test]
 #[serial]
-async fn register_creates_a_signed_in_account_without_any_role() {
-    request::<App, _, _>(|server, _ctx| async move {
+async fn register_creates_an_unverified_signed_in_account_that_has_no_role() {
+    request::<App, _, _>(|server, ctx| async move {
         let form = [
             ("name", "Ada Lovelace"),
             ("email", "Ada@Example.com"),
@@ -303,14 +303,30 @@ async fn register_creates_a_signed_in_account_without_any_role() {
             .form(&form)
             .await;
         assert_eq!(response.status_code(), 303);
-        let cookie = response
-            .header("set-cookie")
-            .to_str()
+        assert_eq!(response.header("location"), "/email/verify");
+        assert!(
+            response.maybe_header("set-cookie").is_some(),
+            "signed in, but still to verify the address"
+        );
+
+        use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
+        let created = module_auth::users::Entity::find()
+            .filter(module_auth::users::Column::Email.eq("ada@example.com"))
+            .one(&ctx.db)
+            .await
             .unwrap()
-            .split(';')
-            .next()
+            .expect("the email is stored lowercase");
+        assert!(created.email_verified_at.is_none());
+        rust_starter::models::users::Entity::find_by_id(created.id)
+            .one(&ctx.db)
+            .await
             .unwrap()
-            .to_string();
+            .unwrap()
+            .into_active_model()
+            .verified(&ctx.db)
+            .await
+            .unwrap();
+        let cookie = login(&server, "ada@example.com", "password123").await;
 
         let home = server
             .get("/")

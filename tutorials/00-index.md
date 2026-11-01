@@ -30,7 +30,10 @@ Start here. Every page has an **Index** link at the top and bottom, plus Previou
 | 22 | [Activity log, queue monitor and database backups](22-activity-log-queue-and-backups.md) | Audit trail, job monitor, `backup:run --only-db` |
 | 23 | [PDF and email](23-pdf-and-email.md) | Headless Chrome PDFs, email through Amazon SES, `make:mail` |
 | 24 | [Email and PDF step by step](24-email-and-pdf-step-by-step.md) | Loco's mailer and our `mail` module side by side, an invoice PDF by email, SES setup |
-| 25 | [AI service](25-ai-service.md) | One wrapper for Claude, OpenAI and Gemini, photos to JSON, image generation, AI API logs |
+| 25 | [AI service: Claude, OpenAI and Gemini](25-ai-service.md) | One wrapper for Claude, OpenAI and Gemini, photos to JSON, image generation, AI API logs |
+| 26 | [Commands and jobs for Laravel developers](26-commands-and-jobs-for-laravel-developers.md) | `make:command` and `make:job` mapped to Loco, queues, what is built and what is not |
+| 27 | [PostgreSQL for MySQL users](27-postgresql-for-mysql-users.md) | `psql`, `pg_dump` and `pg_restore` next to `mysql` and `mysqldump` |
+| 28 | [MySQL or PostgreSQL, one choice per app](28-mysql-or-postgresql-per-app.md) | Build for either database, the rules for code that works on both, testing both |
 
 ## Pick a path
 

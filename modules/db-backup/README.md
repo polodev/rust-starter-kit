@@ -60,7 +60,8 @@ settings:
       keep_monthly_months: 4
       keep_yearly_years: 2
     monitor_max_age_days: 1
-    # dump_binary: /usr/local/bin/mysqldump     # when it is not on the PATH
+    # database_uri: postgres://user:pass@127.0.0.1:5432/app   # back up this database instead of the app's own
+    # dump_binary: /usr/local/bin/mysqldump     # mysqldump, mariadb-dump or pg_dump, when it is not on the PATH
     # extra_dump_args: ["--no-tablespaces"]
 ```
 
@@ -68,9 +69,12 @@ Keep keys out of the file: use `get_env` as above. These disks are independent o
 
 ## How it works
 
-- The database address is the app's own (`database.uri`). The password is passed to `mysqldump` through the
-  `MYSQL_PWD` environment variable, never on the command line.
-- The dump uses `--single-transaction --quick --skip-lock-tables --routines --triggers` and utf8mb4. A MySQL 8
+- The database is the app's own (`database.uri`) unless `settings.db_backup.database_uri` names another one. The
+  address decides the tool, like Spatie's `mysql` and `pgsql` dumpers: `mysql://` or `mariadb://` runs `mysqldump`,
+  `postgres://` or `postgresql://` runs `pg_dump`. The password is passed in the environment (`MYSQL_PWD`,
+  `PGPASSWORD`), never on the command line.
+- A PostgreSQL dump is plain SQL made with `pg_dump --no-owner --no-password`, so any user can restore it.
+- The MySQL dump uses `--single-transaction --quick --skip-lock-tables --routines --triggers` and utf8mb4. A MySQL 8
   client gets `--column-statistics=0` automatically so it can dump a MariaDB server.
 - The dump is streamed through gzip into a temporary file and uploaded in chunks, so large databases are not
   held in memory. The same file goes to every destination; if one disk fails the others still get it, and the
@@ -83,12 +87,13 @@ Keep keys out of the file: use `get_env` as above. These disks are independent o
 ## Restore
 
 ```sh
-gunzip -c my-app/2026-10-30-01-30-00.sql.gz | mysql -u root my_database
+gunzip -c my-app/2026-10-30-01-30-00.sql.gz | mysql -u root my_database          # MySQL, MariaDB
+createdb my_database && gunzip -c my-app/2026-10-30-01-30-00.sql.gz | psql my_database   # PostgreSQL
 ```
 
 ## Needs
 
-An S3 disk needs no extra setup (an HTTP client is installed for it automatically). `mysqldump` (MySQL or MariaDB client tools) on the machine that runs the command.
+An S3 disk needs no extra setup (an HTTP client is installed for it automatically). `mysqldump` (MySQL or MariaDB client tools) or `pg_dump` (PostgreSQL client tools; with Homebrew it is under `/usr/local/opt/postgresql@16/bin`, which the module also tries) on the machine that runs the command. One command backs up one database; to back up a second database, run another configuration with its own `name`.
 
 ## Not included
 

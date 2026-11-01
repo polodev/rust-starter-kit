@@ -16,6 +16,7 @@ pub mod config;
 mod entities;
 mod message;
 mod migrations;
+mod queue;
 mod service;
 pub mod ses;
 mod transport;
@@ -25,9 +26,10 @@ use loco_modular::Module;
 use loco_rs::{controller::Routes, task::Tasks};
 use sea_orm_migration::MigrationTrait;
 
-pub use config::{Driver, MailConfig};
-pub use entities::mail_log;
+pub use config::{Delivery, Driver, MailConfig};
+pub use entities::{mail_log, mail_queue};
 pub use message::{Attachment, Mail};
+pub use queue::{dispatch, enqueue, run_worker, spawn_embedded_worker, work_once, MAX_ATTEMPTS};
 pub use service::{send, send_with};
 pub use transport::{captured, clear_captured, Captured};
 

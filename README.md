@@ -1,6 +1,6 @@
 # Rust Starter
 
-Laravel-style starter kit on Loco (Axum), SeaORM and Tera, with MariaDB, Tailwind and HTMX.
+Laravel-style starter kit on Loco (Axum), SeaORM and Tera, with MariaDB/MySQL or PostgreSQL, Tailwind and HTMX.
 The site is bilingual: English and Bangla.
 
 ## What is integrated
@@ -8,7 +8,7 @@ The site is bilingual: English and Bangla.
 Checked means built, tested and working in this repository. Unchecked is planned.
 
 **Foundation**
-- [x] Loco app (Axum, SeaORM, Tera) on MariaDB/MySQL, with a separate test database and a guard against testing the real one
+- [x] Loco app (Axum, SeaORM, Tera) on MariaDB/MySQL or PostgreSQL (chosen when you build, `--features postgres`), background jobs on Redis or in the database, with a separate test database and a guard against testing the real one
 - [x] `cargo modular` generators: `make:module`, `make:command`, `modules:list`, `modules:sync`, schedule commands
 - [x] Modular monolith: every feature is a `modules/*` crate with its own routes, migrations, templates, permissions and commands
 - [x] Tailwind CSS (standalone CLI), Alpine.js, dark and light theme
@@ -34,6 +34,7 @@ Checked means built, tested and working in this repository. Unchecked is planned
 - [x] Scheduled jobs page
 - [ ] Settings, menus and blog
 - [x] Activity log (Spatie-compatible table): filters, before/after changes, delete and clean; entries written by the admin screens and sign-in
+- [x] Laravel-style database queue (`DatabaseJob`, `dispatch`, `jobs:work`, `jobs:failed`, `jobs:retry-failed`) on Laravel's own `jobs` and `failed_jobs` tables
 - [x] Queue monitor: tracked job history (queued, running, finished, failed, stale), pending and failed jobs of a Laravel queue, delete, purge, mark stale
 
 **Content and files**
@@ -58,16 +59,22 @@ Checked means built, tested and working in this repository. Unchecked is planned
 - [ ] OpenAPI documentation for the API
 - [ ] Payments, tenant URLs and a project generator (`cargo modular new`)
 
+## Requirements
+
+- Rust, MariaDB/MySQL (or PostgreSQL, see below), and **Redis** (the background job queue; `brew install redis && brew services start redis`, check with `redis-cli ping`).
+- `QUEUE_REDIS_URL` in `.env`, for example `redis://127.0.0.1:6379/5`. The last number is the Redis database (0-15); give each app on a shared Redis its own.
+- Mail has its own queue in the MariaDB table `mail_queue`, so it does not need Redis.
+
 ## Run it
 
 ```sh
-cp .env.example .env            # database URLs, R2 keys, backup settings (read automatically at startup)
+cp .env.example .env            # database URLs, Redis URL, R2 keys, backup settings (read automatically at startup)
 mysql -uroot -e "CREATE DATABASE rust_starter CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 mysql -uroot -e "CREATE DATABASE rust_starter_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 cargo run -- db migrate
 cargo run -- db seed            # about, privacy-policy, terms-of-service in en + bn
 just css                        # needs ./tools/tailwindcss (Tailwind standalone CLI v3.4)
-cargo run -- start              # http://localhost:5150
+cargo run -- start --server-and-worker   # http://localhost:5150 (the web server plus the Redis job worker)
 ```
 
 Start over at any time with `cargo run -- db reset` then `cargo run -- db seed` (each table has one base migration).
@@ -103,6 +110,7 @@ Commands that ship with the kit (run as `cargo run -- task <name> key:value`):
 | `backup:run only-db:true` (`disk:`, `filename:`) | dump the database (gzip) to the backup bucket(s) | daily 01:30 |
 | `backup:list`, `backup:clean`, `backup:monitor` | list, apply retention, check there is a recent backup | clean 01:00, monitor 03:00 |
 | `activitylog:clean days:90 log:users` | delete old activity-log entries | daily 03:20 |
+| `jobs:work`, `jobs:failed`, `jobs:retry-failed`, `jobs:flush-failed` | run the database queue, list, retry and delete failed jobs | Supervisor / on demand |
 | `queue-watcher:mark-stale`, `queue-watcher:purge` | flag hung jobs, remove old job history | hourly, daily 03:40 |
 | `auth:prune-sessions`, `auth-api:prune-tokens` | remove expired sessions and API tokens | hourly, daily 03:30 |
 | `pages:check-translations` | report pages that lack their English text | daily 03:00 |
@@ -155,7 +163,7 @@ The app, the migrator and the view engine all read `modules_registry::all()`.
 | `social-auth` | Sign in with Google for the website and the API (ID token), linked accounts |
 | `contact` | Public `/contact` form that submits without a reload, with a honeypot; admin inbox with a modal and a replied status |
 | `activity-log` | Spatie-compatible activity log: admin list and detail, `activitylog:clean`; writing entries uses the `loco-activity-log` package |
-| `queue-watcher` | Queue monitor: tracked job history, pending and failed jobs, delete, purge; `track()` for workers |
+| `queue-watcher` | Queue monitor (tracked job history, pending and failed jobs, delete, purge; `track()` for workers) and the Laravel-style database queue (`DatabaseJob`, `dispatch`, `jobs:work`) |
 | `db-backup` | `backup:run only-db:true`, list, clean, monitor; dumps to its own S3/R2/local disks |
 | `pdf` | PDF generation with headless Chrome (like Browsershot); sample invoice |
 | `ai-service` | One wrapper for Claude, OpenAI and Gemini (text, pictures to JSON) and OpenAI images; AI API logs at `/admin/ai-api-logs` |
@@ -210,6 +218,19 @@ cargo test --workspace
 Run one `cargo test` at a time: the tests share one test database. `tests/migrations.rs` checks that every table has a
 single base migration. The database-backup test needs `mysqldump` and the invoice test needs Chrome; each is skipped without it. Tests run against `rust_starter_test` only. Booting the test environment against any database whose
 name does not end in `_test` is refused, because the test environment truncates and recreates its schema.
+
+## MySQL / MariaDB or PostgreSQL
+
+Each app uses one database, chosen when it is built:
+
+```sh
+cargo run                       # MariaDB / MySQL (default), DATABASE_URL=mysql://root@127.0.0.1:3306/app
+cargo run --features postgres   # PostgreSQL,                DATABASE_URL=postgres://user@127.0.0.1:5432/app
+```
+
+The app refuses to start when the build and `DATABASE_URL` disagree. Migrations carry both versions of the raw SQL, entities
+use `loco_database` integer aliases, and the test suite passes on both (`packages/loco-database/README.md`,
+`tutorials/28-mysql-or-postgresql-per-app.md`). Backups use `mysqldump` or `pg_dump` by the address.
 
 ## MariaDB notes
 

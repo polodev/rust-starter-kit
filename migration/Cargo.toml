@@ -9,6 +9,7 @@ name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
+loco-database = { workspace = true }
 loco-rs = { workspace = true }
 loco-modular = { workspace = true }
 modules-registry = { workspace = true }

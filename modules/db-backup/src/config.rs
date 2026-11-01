@@ -51,12 +51,24 @@ pub struct BackupConfig {
     /// `backup:monitor` complains when the newest backup is older than this many days.
     #[serde(default = "default_monitor_days")]
     pub monitor_max_age_days: i64,
-    /// Path of `mysqldump` (or `mariadb-dump`) when it is not on the `PATH`.
+    /// Database to back up, `mysql://...` or `postgres://...`. Empty means the app's own `database.uri`.
+    #[serde(default, deserialize_with = "optional_text")]
+    pub database_uri: Option<String>,
+    /// Path of `mysqldump`, `mariadb-dump` or `pg_dump` when it is not on the `PATH`.
     #[serde(default)]
     pub dump_binary: Option<String>,
     /// Extra arguments for the dump command, for example `["--no-tablespaces"]`.
     #[serde(default)]
     pub extra_dump_args: Vec<String>,
+}
+
+/// Empty text and `null` (an unset environment variable) both mean "not set".
+fn optional_text<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<Option<String>, D::Error> {
+    Ok(Option::<String>::deserialize(deserializer)?
+        .map(|text| text.trim().to_string())
+        .filter(|text| !text.is_empty()))
 }
 
 /// An empty environment variable becomes `null` in the YAML; read that as an empty text.

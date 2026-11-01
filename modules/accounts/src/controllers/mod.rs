@@ -7,7 +7,7 @@ use axum::{
     Form,
 };
 use loco_rs::{hash, prelude::*};
-use module_auth::{same_origin, session, users, Auth};
+use module_auth::{same_origin, session, users, Auth, VerifiedAuth};
 use module_media::{read_form, InteractsWithMedia};
 use module_site_layout::Site;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
@@ -66,7 +66,7 @@ async fn profile(
         StatusCode::OK,
         site.data(json!({
             "active": "profile", "status": status_key(&query), "name": user.name,
-            "email": user.email, "role": user.access.role.as_ref().map(|role| role.name.clone()),
+            "email": user.email, "email_verified": user.email_verified, "role": user.access.role.as_ref().map(|role| role.name.clone()),
             "joined": user.created_at.format("%Y-%m-%d").to_string(),
         })),
     )
@@ -83,7 +83,7 @@ async fn update_profile(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
     site: Site,
-    Auth(user): Auth,
+    VerifiedAuth(user): VerifiedAuth,
     Form(form): Form<ProfileForm>,
 ) -> Result<Response> {
     if !same_origin(&headers) {
@@ -96,7 +96,7 @@ async fn update_profile(
             "accounts/profile.html",
             StatusCode::UNPROCESSABLE_ENTITY,
             site.data(json!({
-                "active": "profile", "error": "profile-name-invalid", "name": name, "email": user.email,
+                "active": "profile", "error": "profile-name-invalid", "name": name, "email": user.email, "email_verified": user.email_verified,
                 "role": user.access.role.as_ref().map(|role| role.name.clone()),
                 "joined": user.created_at.format("%Y-%m-%d").to_string(),
             })),
@@ -125,7 +125,7 @@ async fn update_profile(
 async fn password_form(
     ViewEngine(v): ViewEngine<TeraView>,
     site: Site,
-    Auth(_user): Auth,
+    VerifiedAuth(_user): VerifiedAuth,
     Query(query): Query<StatusQuery>,
 ) -> Result<Response> {
     render(
@@ -149,7 +149,7 @@ async fn update_password(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
     site: Site,
-    Auth(user): Auth,
+    VerifiedAuth(user): VerifiedAuth,
     Form(form): Form<PasswordForm>,
 ) -> Result<Response> {
     if !same_origin(&headers) {
@@ -197,7 +197,7 @@ async fn logo_form(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
     site: Site,
-    Auth(user): Auth,
+    VerifiedAuth(user): VerifiedAuth,
     Query(query): Query<StatusQuery>,
 ) -> Result<Response> {
     let logo = user_owner(user.id)
@@ -217,7 +217,7 @@ async fn upload_logo(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
     site: Site,
-    Auth(user): Auth,
+    VerifiedAuth(user): VerifiedAuth,
     multipart: Multipart,
 ) -> Result<Response> {
     if !same_origin(&headers) {
@@ -253,7 +253,7 @@ async fn upload_logo(
 async fn remove_logo(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
-    Auth(user): Auth,
+    VerifiedAuth(user): VerifiedAuth,
 ) -> Result<Response> {
     if !same_origin(&headers) {
         return Ok(rejected());

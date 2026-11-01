@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 3 of 25** | [Index](00-index.md) | [Previous: 2 Setup](02-setup.md) | [Next: 4 Project structure](04-project-structure.md)
+**Tutorial 3 of 28** | [Index](00-index.md) | [Previous: 2 Setup](02-setup.md) | [Next: 4 Project structure](04-project-structure.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -29,6 +29,9 @@
 23. [PDF and email](23-pdf-and-email.md)  
 24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
 25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
+26. [Commands and jobs for Laravel developers](26-commands-and-jobs-for-laravel-developers.md)  
+27. [PostgreSQL for MySQL users](27-postgresql-for-mysql-users.md)  
+28. [MySQL or PostgreSQL, one choice per app](28-mysql-or-postgresql-per-app.md)  
 
 </details>
 <!-- nav:end -->

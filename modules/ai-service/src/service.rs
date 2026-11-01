@@ -330,12 +330,16 @@ impl AiService {
                 ai_api_logs::SUCCESS
             }
             .to_string()),
-            http_status: Set(outcome.http_status),
-            duration_ms: Set(outcome.duration_ms.min(u128::from(u32::MAX)) as u32),
-            input_tokens: Set(outcome.input_tokens),
-            output_tokens: Set(outcome.output_tokens),
+            http_status: Set(outcome.http_status.map(loco_database::small_int)),
+            duration_ms: Set(loco_database::int(
+                outcome.duration_ms.min(u128::from(u32::MAX)) as u32,
+            )),
+            input_tokens: Set(loco_database::int(outcome.input_tokens)),
+            output_tokens: Set(loco_database::int(outcome.output_tokens)),
             cost: Set(outcome.cost),
-            image_count: Set(entry.image_count.min(usize::from(u16::MAX)) as u16),
+            image_count: Set(loco_database::small_int(
+                entry.image_count.min(usize::from(u16::MAX)) as u16,
+            )),
             sensitive: Set(entry.sensitive),
             prompt: Set(keep_content.then(|| entry.prompt.clone())),
             response: Set(outcome

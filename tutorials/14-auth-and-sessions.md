@@ -1,5 +1,5 @@
 <!-- nav:start -->
-**Tutorial 14 of 25** | [Index](00-index.md) | [Previous: 13 Console commands and the scheduler](13-console-and-schedule.md) | [Next: 15 Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)
+**Tutorial 14 of 28** | [Index](00-index.md) | [Previous: 13 Console commands and the scheduler](13-console-and-schedule.md) | [Next: 15 Roles and permissions (`role-permission` module)](15-roles-and-permissions.md)
 
 <details><summary>Jump to any tutorial</summary>
 
@@ -29,6 +29,9 @@
 23. [PDF and email](23-pdf-and-email.md)  
 24. [Email and PDF step by step](24-email-and-pdf-step-by-step.md)  
 25. [AI service: Claude, OpenAI and Gemini](25-ai-service.md)  
+26. [Commands and jobs for Laravel developers](26-commands-and-jobs-for-laravel-developers.md)  
+27. [PostgreSQL for MySQL users](27-postgresql-for-mysql-users.md)  
+28. [MySQL or PostgreSQL, one choice per app](28-mysql-or-postgresql-per-app.md)  
 
 </details>
 <!-- nav:end -->
@@ -80,9 +83,26 @@ async fn maybe(OptionalAuth(user): OptionalAuth) { ... }       // user is Option
 - **No account guessing:** a wrong password and an unknown email give the same message, and an unknown email still pays the cost of one password hash.
 - **Passwords:** hashed with Argon2 (Loco). At least 8 characters.
 
+## Email links: verify, reset, sign in
+
+Three one-time links go through the `mail` module (all text is Fluent keys, so mails follow the visitor's language):
+
+| Link | Pages | Lifetime |
+|---|---|---|
+| Verify the email address | sign-up sends it; `/email/verification-notification` asks again; `/email/verify/{secret}` | 24 hours |
+| Reset a forgotten password | `/forgot-password`, `/reset-password/{secret}` | 60 minutes |
+| Sign in without a password | `/login/email-link`, `/login/email-link/{secret}` | 15 minutes |
+
+- Like Laravel: a new account is signed in at once but **not verified**. Handlers that take `VerifiedAuth` (the admin area and the account pages except the profile) send an unverified person to `/email/verify`, the notice page with a "send again" button. `Auth` only needs a session; `VerifiedAuth` is `Auth` plus the `verified` check.
+- Asking for a link never reveals whether an address has an account, and one address gets at most 3 mails an hour per kind.
+- The link holds a random secret; the `user_security_tokens` table keeps only its SHA-256. A link works once and expires.
+- A password reset signs the person out everywhere. A reset or a sign-in link also verifies the address, because it reached the mailbox.
+- Opening a sign-in link only shows a button; pressing it signs in. Mail scanners that open links ahead of the person would otherwise use the link up.
+- In development `MAIL_DRIVER=log` writes the mails as `.eml` files in `storage/mail`; open the file and copy the link. Use `smtp` or `ses` to send real mail.
+- Two-factor sign-in is not part of the starter.
+
 ## Good to know
 
-- No mailer is wired yet, so register marks the email as verified. When mail is added, switch to a verification link.
 - The login lockout uses the in-memory cache, so with several servers use Redis so they share the counter.
 - The demo account (`demo@gmail.com` / `secret123$`) exists in **development only**. It is created by `cargo run -- db seed` and is a developer.
 

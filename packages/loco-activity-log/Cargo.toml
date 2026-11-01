@@ -6,6 +6,7 @@ description = "Activity log for Loco apps, compatible with the Spatie laravel-ac
 publish = false
 
 [dependencies]
+loco-database = { workspace = true }
 sea-orm = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }

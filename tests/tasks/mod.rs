@@ -1,4 +1,6 @@
 pub mod ai_service;
+pub mod database_queue;
+pub mod database_search;
 pub mod db_backup;
 pub mod mail;
 pub mod pages_check_translations;

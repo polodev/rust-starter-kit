@@ -12,7 +12,7 @@ use loco_rs::{
 };
 use sea_orm_migration::MigrationTrait;
 use serde::{de::DeserializeOwned, Serialize};
-use std::future::Future;
+use std::{collections::HashMap, future::Future, pin::Pin};
 
 /// One admin sidebar link contributed by a module. The admin layout shows it only to people who
 /// hold `permission`, groups it under `section`, and also lists it in the Ctrl/Cmd+K quick search.
@@ -33,11 +33,22 @@ pub struct MenuItem {
 /// Section titles in display order; sections not listed here come last, alphabetically.
 pub const MENU_SECTIONS: [&str; 4] = ["Overview", "Content", "People and access", "System"];
 
+/// What a database job's handler returns (see [`Module::database_jobs`]).
+pub type DatabaseJobFuture = Pin<Box<dyn Future<Output = Result<()>> + Send>>;
+/// Runs one database job: the app context and the job's stored arguments (JSON).
+pub type DatabaseJobHandler = fn(AppContext, serde_json::Value) -> DatabaseJobFuture;
+
 /// A self-contained feature crate living under `modules/<name>`.
 #[async_trait]
 pub trait Module: Send + Sync {
     /// Kebab-case module name, e.g. `role-permission`.
     fn name(&self) -> &'static str;
+
+    /// Database jobs (Laravel's `jobs` table) this module can run: `(job name, handler)`, built with
+    /// `module_queue_watcher::database_job::<MyJob>()`. The worker `jobs:work` looks the handler up by name.
+    fn database_jobs(&self) -> Vec<(&'static str, DatabaseJobHandler)> {
+        Vec::new()
+    }
 
     /// Routes mounted into the application.
     fn routes(&self) -> Vec<Routes> {
@@ -266,6 +277,21 @@ pub fn collect_templates(modules: &[Box<dyn Module>]) -> Vec<(&'static str, &'st
         .iter()
         .flat_map(|module| module.templates())
         .collect()
+}
+
+/// Every module's database jobs by name. A name used twice is a mistake and is reported when the worker starts.
+pub fn collect_database_jobs(
+    modules: &[Box<dyn Module>],
+) -> HashMap<&'static str, DatabaseJobHandler> {
+    let mut handlers = HashMap::new();
+    for module in modules {
+        for (name, handler) in module.database_jobs() {
+            if handlers.insert(name, handler).is_some() {
+                tracing::error!(job = name, "two modules declare the same database job name");
+            }
+        }
+    }
+    handlers
 }
 
 pub fn register_tasks(modules: &[Box<dyn Module>], tasks: &mut Tasks) {

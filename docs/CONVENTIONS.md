@@ -105,7 +105,7 @@ modules/<name>/
 | `media` | Spatie-compatible media library |
 | `contact` | contact form and admin inbox |
 | `activity-log` | admin screens and cleaning for the Spatie-compatible activity log |
-| `queue-watcher` | queue monitor: tracked job history, pending and failed jobs |
+| `queue-watcher` | queue monitor (tracked job history, pending and failed jobs) and the Laravel-style database queue (`DatabaseJob`, `jobs:work`) |
 | `db-backup` | database backups (`backup:run only-db:true`) to separately configured disks |
 | `pdf` | PDF generation with headless Chrome |
 | `ai-service` | the one wrapper for Claude, OpenAI and Gemini, OpenAI images, and the AI API logs |
@@ -222,7 +222,19 @@ modules/<name>/
 
 ## Database
 
-- MariaDB/MySQL. Tables are plural `snake_case`; columns `snake_case`; every table has `id`, `created_at`,
+- **MariaDB/MySQL or PostgreSQL, chosen when the app is built** (default MySQL; `--features postgres` for PostgreSQL;
+  `packages/loco-database`). Write code for both:
+  - an unsigned column in an entity uses `loco_database::UnsignedBigInt` / `UnsignedInt` / `UnsignedSmallInt` /
+    `UnsignedTinyInt`, never `u64`/`u32`/`u16`/`u8` (convert with `big_int`, `int`, `to_u64`, ...); ids from the URL are
+    `Path<UnsignedBigInt>`;
+  - a raw SQL migration passes both versions to `loco_database::run_ddl` (PostgreSQL: `bigserial`, `timestamptz`,
+    `text`, separate `CREATE INDEX`, no backticks, unique index names); prefer SeaORM's schema builder, which is portable;
+  - no MySQL-only SQL in code (`SHOW TABLES`, backticks, `INSERT ... ON DUPLICATE KEY`); use SeaORM, or branch on
+    `get_database_backend()`;
+  - `LIKE` is case-insensitive on MySQL and case-sensitive on PostgreSQL; every search box uses
+    `loco_database::contains_ignoring_case(Column, text)` (`ILIKE` on PostgreSQL), never `.contains()` directly;
+  - run the tests on both before you finish a change that touches the database (commands in the loco-database README).
+- Tables are plural `snake_case`; columns `snake_case`; every table has `id`, `created_at`,
   `updated_at` unless it is a link table.
 - A migration lives in the module that owns the table, as
   `m{YYYYMMDD}_{six digit sequence}_{what_it_does}.rs`, and is registered in that module's `migrations/mod.rs`.
@@ -260,6 +272,8 @@ modules/<name>/
 ## Security
 
 - Passwords: Argon2id, minimum 8 characters, never logged or returned.
+- `Auth` means signed in; `VerifiedAuth` (Laravel's `auth` + `verified`) also needs a verified email and redirects to `/email/verify`. Admin pages use it.
+- Links sent by email (verify, reset, sign in) are one-time, expire, store only the SHA-256 of the secret, and never reveal whether an address has an account.
 - Sessions and tokens: store only a hash (`SHA-256`) of the secret; compare hashes, never plain values.
 - CSRF: `same_origin` on every state-changing form request plus `SameSite=Lax` cookies. Cookies are `HttpOnly`
   and `Secure` in production.
@@ -279,6 +293,10 @@ modules/<name>/
   break the action.
 - **Packages hold shared writers.** `packages/loco-activity-log` is the writer, so a module low in the dependency
   graph can log without depending on the admin module.
+- **Two kinds of background job.**
+  - **Database jobs** (`module_queue_watcher::DatabaseJob`, tables `jobs` and `failed_jobs`, Laravel's schema): the default when a job must be stored together with your data in one transaction, when it must survive without Redis, or when the database is shared with a Laravel app. Dispatch with `dispatch(Job { .. }).on_queue("emails").send(&ctx.db)`, list the job in the owning module's `Module::database_jobs`, run `task jobs:work queue:emails,default` (Supervisor in production). Job names (`NAME`) are stable: never rename a job that has waiting rows. Give Rust jobs their own queue names, apart from a Laravel app's.
+  - **Loco workers** stored in Redis (`queue: kind: Redis`, `QUEUE_REDIS_URL`, one Redis database number per app): for high volume and speed. A worker picks a named queue with `fn queue()`; production runs `start --worker <queues>` under Supervisor. Tests use `ForegroundBlocking`.
+  - Mail has its own queue (`mail_queue`).
 - **Wrap worker bodies in `module_queue_watcher::track(...)`** so every run shows up in the queue monitor with its
   status, time and error.
 - **Backups** are configured in `settings.db_backup`, separately from the website's `storage:`; keys come from the
@@ -286,7 +304,7 @@ modules/<name>/
 
 ## Email and PDF
 
-- **Send mail only through `module_mail::send`** so every attempt is logged in `mail_log`. Build mails as classes with
+- **Send mail from handlers with `module_mail::dispatch`** (it queues in the database, `mail_queue`, when `MAIL_DELIVERY=queue`; the worker is `mail:work`, run by Supervisor in production). Every attempt is logged in `mail_log`; `module_mail::send` sends at once and is for commands. Build mails as classes with
   `cargo modular make:mail Name --module=<module>` (HTML and text templates; never string-build HTML in a handler).
 - Mail text and subjects for people use Fluent keys like the rest of the site; never put secrets or tokens that are not
   needed in an email.

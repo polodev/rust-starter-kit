@@ -1,3 +1,5 @@
+mod email_links;
+
 use std::{sync::OnceLock, time::Duration};
 
 use axum::{
@@ -6,7 +8,6 @@ use axum::{
     response::{Html, IntoResponse, Response},
     Form,
 };
-use chrono::Utc;
 use loco_rs::{environment::Environment, hash, prelude::*};
 use module_site_layout::Site;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
@@ -48,11 +49,11 @@ fn google_login_enabled() -> bool {
     std::env::var("GOOGLE_CLIENT_ID").is_ok_and(|id| !id.trim().is_empty())
 }
 
-fn secure_cookies(ctx: &AppContext) -> bool {
+pub(super) fn secure_cookies(ctx: &AppContext) -> bool {
     ctx.environment == Environment::Production
 }
 
-fn page(
+pub(super) fn page(
     v: &TeraView,
     template: &str,
     status: StatusCode,
@@ -62,7 +63,7 @@ fn page(
     Ok((status, Html(body)).into_response())
 }
 
-fn redirect_with_session(location: &str, token: &str, secure: bool) -> Response {
+pub(super) fn redirect_with_session(location: &str, token: &str, secure: bool) -> Response {
     (
         StatusCode::SEE_OTHER,
         [
@@ -73,7 +74,7 @@ fn redirect_with_session(location: &str, token: &str, secure: bool) -> Response 
         .into_response()
 }
 
-fn user_agent(headers: &HeaderMap) -> Option<&str> {
+pub(super) fn user_agent(headers: &HeaderMap) -> Option<&str> {
     headers
         .get(header::USER_AGENT)
         .and_then(|value| value.to_str().ok())
@@ -100,9 +101,16 @@ async fn login_form(
     if user.is_some() {
         return Ok(axum::response::Redirect::to(&next).into_response());
     }
-    let notice = query
-        .notice
-        .filter(|key| matches!(key.as_str(), "login-needed" | "login-google-failed"));
+    let notice = query.notice.filter(|key| {
+        matches!(
+            key.as_str(),
+            "login-needed"
+                | "login-google-failed"
+                | "login-email-verified"
+                | "login-password-reset-done"
+                | "login-link-invalid"
+        )
+    });
     page(
         &v,
         "auth/login.html",
@@ -144,11 +152,10 @@ async fn login(
         .filter(users::Column::Email.eq(email.as_str()))
         .one(&ctx.db)
         .await?;
+    // An unverified person can sign in (like Laravel); `VerifiedAuth` keeps them out of the pages that need a
+    // verified address and sends them to the notice page.
     let accepted = match &user {
-        Some(user) => {
-            hash::verify_password(&form.password, &user.password)
-                && user.email_verified_at.is_some()
-        }
+        Some(user) => hash::verify_password(&form.password, &user.password),
         None => {
             let _ = hash::verify_password(&form.password, dummy_hash());
             false
@@ -251,15 +258,14 @@ async fn register(
         return render(StatusCode::CONFLICT, "register-email-taken");
     }
 
-    let now = Utc::now().fixed_offset();
     let created = users::ActiveModel {
         pid: Set(Uuid::new_v4()),
         email: Set(email.clone()),
         password: Set(hash::hash_password(&form.password)?),
         api_key: Set(format!("lo-{}", Uuid::new_v4())),
         name: Set(name.clone()),
-        // No mailer is wired yet, so accounts are marked verified on sign-up.
-        email_verified_at: Set(Some(now)),
+        // Verified by the link in the welcome mail.
+        email_verified_at: Set(None),
         ..Default::default()
     }
     .insert(&ctx.db)
@@ -280,7 +286,6 @@ async fn register(
         Err(error) => return Err(error.into()),
     };
 
-    let token = session::create(&ctx.db, user.id, user_agent(&headers)).await?;
     loco_activity_log::activity(&ctx.db)
         .in_log("auth")
         .caused_by("user", user.id)
@@ -288,7 +293,13 @@ async fn register(
         .event("registered")
         .log_quietly("Registered an account")
         .await;
-    Ok(redirect_with_session("/", &token, secure_cookies(&ctx)))
+    email_links::send_verification_link(&v, &ctx, &site, &user).await?;
+    let token = session::create(&ctx.db, user.id, user_agent(&headers)).await?;
+    Ok(redirect_with_session(
+        "/email/verify",
+        &token,
+        secure_cookies(&ctx),
+    ))
 }
 
 #[debug_handler]
@@ -324,10 +335,13 @@ async fn logout(State(ctx): State<AppContext>, headers: HeaderMap) -> Result<Res
 }
 
 pub fn routes() -> Vec<Routes> {
-    vec![Routes::new()
-        .add("/login", get(login_form).post(login))
-        .add("/register", get(register_form).post(register))
-        .add("/logout", post(logout))]
+    vec![
+        Routes::new()
+            .add("/login", get(login_form).post(login))
+            .add("/register", get(register_form).post(register))
+            .add("/logout", post(logout)),
+        email_links::routes(),
+    ]
 }
 
 #[cfg(test)]

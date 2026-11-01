@@ -19,6 +19,12 @@ impl Initializer for ModulesInitializer {
     async fn after_routes(&self, router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
         let modules = modules_registry::all();
         let menu = AdminMenu(loco_modular::collect_menu(&modules));
+        // Development: one process does everything. Production runs `mail:work` under Supervisor instead.
+        module_mail::spawn_embedded_worker(ctx);
+        module_queue_watcher::spawn_embedded_worker(
+            ctx,
+            loco_modular::collect_database_jobs(&modules),
+        );
         let router = loco_modular::apply_all(&modules, router, ctx);
         Ok(router.layer(Extension(menu)))
     }

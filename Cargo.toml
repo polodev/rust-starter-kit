@@ -3,11 +3,11 @@ members = [".", "migration", "packages/*", "modules/*"]
 resolver = "2"
 
 [workspace.dependencies]
-loco-rs = { version = "1.2", default-features = false, features = ["auth", "cli", "with-db", "cache_inmem", "worker", "storage_aws_s3"] }
-sea-orm = { version = "2.0", default-features = false, features = ["sqlx-mysql", "runtime-tokio-rustls", "macros", "with-chrono", "with-json", "with-uuid"] }
+loco-rs = { version = "1.2", default-features = false, features = ["auth", "cli", "with-db", "cache_inmem", "worker_redis", "storage_aws_s3"] }
+sea-orm = { version = "2.0", default-features = false, features = ["sqlx-mysql", "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "with-json", "with-uuid"] }
 uuid = { version = "1.6", features = ["v4"] }
 sha2 = "0.10"
-sea-orm-migration = { version = "2.0", features = ["runtime-tokio-rustls", "sqlx-mysql"] }
+sea-orm-migration = { version = "2.0", features = ["runtime-tokio-rustls", "sqlx-mysql", "sqlx-postgres"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 async-trait = "0.1"
@@ -17,6 +17,7 @@ chrono = "0.4"
 tokio = { version = "1.45", default-features = false, features = ["rt-multi-thread"] }
 tracing = "0.1"
 loco-modular = { path = "packages/loco-modular" }
+loco-database = { path = "packages/loco-database" }
 modules-registry = { path = "packages/modules-registry" }
 
 [package]
@@ -26,9 +27,14 @@ edition = "2021"
 publish = false
 default-run = "rust-starter-cli"
 
+[features]
+# `cargo run --features postgres` builds the app for PostgreSQL; the default build is for MySQL/MariaDB.
+postgres = ["loco-database/postgres"]
+
 [dependencies]
 loco-rs = { workspace = true }
 loco-modular = { workspace = true }
+loco-database = { workspace = true }
 modules-registry = { workspace = true }
 module-admin-layout = { path = "modules/admin-layout" }
 module-role-permission = { path = "modules/role-permission" }
@@ -54,6 +60,7 @@ rustyline = "14"
 dotenvy = "0.15"
 module-queue-watcher = { path = "modules/queue-watcher" }
 module-media = { path = "modules/media" }
+module-mail = { path = "modules/mail" }
 
 [[bin]]
 name = "rust-starter-cli"
@@ -61,7 +68,6 @@ path = "src/bin/main.rs"
 required-features = []
 
 [dev-dependencies]
-module-mail = { path = "modules/mail" }
 module-ai-service = { path = "modules/ai-service" }
 module-pdf = { path = "modules/pdf" }
 module-db-backup = { path = "modules/db-backup" }

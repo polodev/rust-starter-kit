@@ -1,3 +1,4 @@
+use loco_database::UnsignedBigInt;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +14,7 @@ pub const STATUSES: [&str; 5] = [QUEUED, RUNNING, FINISHED, FAILED, STALE];
 #[sea_orm(table_name = "queue_jobs")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: u64,
+    pub id: UnsignedBigInt,
     #[sea_orm(unique)]
     pub job_id: String,
     pub name: Option<String>,

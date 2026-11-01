@@ -63,6 +63,25 @@ cargo run -- task mail:send-invoice to:you@example.com      # makes the PDF with
 MAIL_DRIVER=ses cargo run -- task mail:send-invoice to:you@example.com   # really send
 ```
 
+## The queue (database, no Redis)
+
+`module_mail::dispatch(&ctx, mail)` sends at once or queues, as `MAIL_DELIVERY` says: `queue` (the default, also when the setting is missing) or `now` (tests). A queued mail is stored in the `mail_queue` table and the request returns at once; a worker sends it.
+If sending fails it is tried again after 1 minute, then after 5 minutes, and is marked `failed` in `mail_log` after the
+third failure. A worker that crashes leaves its mail reserved; another worker takes it over after 5 minutes, and two
+workers never send the same mail.
+
+| Where | How the worker runs |
+|---|---|
+| Development | inside the web server (`MAIL_EMBEDDED_WORKER=true`), nothing else to start |
+| Production | `MAIL_EMBEDDED_WORKER=false` and a Supervisor program running `cargo run -- task mail:work` (see `deploy/supervisor.conf`) |
+
+```sh
+cargo run -- task mail:work              # run the worker until Ctrl+C
+cargo run -- task mail:work once:true    # handle what is due, then exit
+```
+
+After a deploy: `supervisorctl restart app-web app-mail-worker`. Without a running worker, queued mail only waits.
+
 ## The log
 
 `mail_log` has one row per attempt: recipients, subject, driver, `status` (`queued`, `sent`, `failed`), the error or the
@@ -71,5 +90,5 @@ provider's answer, attachment names and times. Tests use the `capture` driver, w
 
 ## Not included yet
 
-An admin screen for the log, automatic retry of failed mail, sending from a background worker, and SES bounce and
+An admin screen for the log and for the queue, a `mail:retry` command for mail that is `failed`, and SES bounce and
 complaint handling (an SNS webhook).

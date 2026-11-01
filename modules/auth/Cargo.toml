@@ -5,6 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
+loco-database = { workspace = true }
 loco-modular = { workspace = true }
 loco-rs = { workspace = true }
 sea-orm = { workspace = true }
@@ -18,5 +19,6 @@ tracing = { workspace = true }
 sha2 = { workspace = true }
 uuid = { workspace = true }
 module-site-layout = { path = "../site-layout" }
+module-mail = { path = "../mail" }
 module-role-permission = { path = "../role-permission" }
 loco-activity-log = { path = "../../packages/loco-activity-log" }

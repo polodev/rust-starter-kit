@@ -87,10 +87,22 @@ impl AiApiLogFilters {
         if let Some(search) = &self.search {
             select = select.filter(
                 Condition::any()
-                    .add(ai_api_logs::Column::Purpose.contains(search.as_str()))
-                    .add(ai_api_logs::Column::Model.contains(search.as_str()))
-                    .add(ai_api_logs::Column::Error.contains(search.as_str()))
-                    .add(ai_api_logs::Column::Prompt.contains(search.as_str())),
+                    .add(loco_database::contains_ignoring_case(
+                        ai_api_logs::Column::Purpose,
+                        search.as_str(),
+                    ))
+                    .add(loco_database::contains_ignoring_case(
+                        ai_api_logs::Column::Model,
+                        search.as_str(),
+                    ))
+                    .add(loco_database::contains_ignoring_case(
+                        ai_api_logs::Column::Error,
+                        search.as_str(),
+                    ))
+                    .add(loco_database::contains_ignoring_case(
+                        ai_api_logs::Column::Prompt,
+                        search.as_str(),
+                    )),
             );
         }
         select
@@ -229,7 +241,7 @@ async fn ai_api_log_show(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
     page: AdminPage,
-    Path(id): Path<u64>,
+    Path(id): Path<loco_database::UnsignedBigInt>,
 ) -> Result<Response> {
     require!(page, v, "ai_api_logs.view");
     let item = ai_api_logs::Entity::find_by_id(id)
@@ -316,10 +328,22 @@ async fn ai_api_logs_delete_selected(
         if let Some(search) = &filters.search {
             condition = condition.add(
                 Condition::any()
-                    .add(ai_api_logs::Column::Purpose.contains(search.as_str()))
-                    .add(ai_api_logs::Column::Model.contains(search.as_str()))
-                    .add(ai_api_logs::Column::Error.contains(search.as_str()))
-                    .add(ai_api_logs::Column::Prompt.contains(search.as_str())),
+                    .add(loco_database::contains_ignoring_case(
+                        ai_api_logs::Column::Purpose,
+                        search.as_str(),
+                    ))
+                    .add(loco_database::contains_ignoring_case(
+                        ai_api_logs::Column::Model,
+                        search.as_str(),
+                    ))
+                    .add(loco_database::contains_ignoring_case(
+                        ai_api_logs::Column::Error,
+                        search.as_str(),
+                    ))
+                    .add(loco_database::contains_ignoring_case(
+                        ai_api_logs::Column::Prompt,
+                        search.as_str(),
+                    )),
             );
         }
         ai_api_logs::Entity::delete_many()
@@ -350,7 +374,7 @@ async fn ai_api_log_delete(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
     page: AdminPage,
-    Path(id): Path<u64>,
+    Path(id): Path<loco_database::UnsignedBigInt>,
 ) -> Result<Response> {
     require_change!(page, v, headers);
     if ai_api_logs::Entity::delete_by_id(id)

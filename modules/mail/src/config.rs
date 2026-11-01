@@ -4,6 +4,8 @@
 //! settings:
 //!   mail:
 //!     driver: ses            # ses | smtp | log | capture
+//!     delivery: queue        # queue (default) | now (queue: stored in mail_queue, sent by `mail:work`)
+//!     embedded_worker: false # true runs the queue worker inside the web server
 //!     from_address: support@example.com
 //!     from_name: My App
 //!     ses:
@@ -27,6 +29,32 @@ fn null_as_empty<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> std::result::Result<String, D::Error> {
     Ok(Option::<String>::deserialize(deserializer)?.unwrap_or_default())
+}
+
+/// Whether `module_mail::dispatch` sends at once or puts the mail in the database queue for `mail:work`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum Delivery {
+    /// Send while the request waits (tests, and commands that must know the result).
+    Now,
+    /// Store in `mail_queue`; a worker (`mail:work`, or the embedded one in development) sends it.
+    #[default]
+    Queue,
+}
+
+fn bool_or_text<'de, D: Deserializer<'de>>(deserializer: D) -> std::result::Result<bool, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Value {
+        Flag(bool),
+        Text(String),
+        Nothing(()),
+    }
+    Ok(match Value::deserialize(deserializer)? {
+        Value::Flag(flag) => flag,
+        Value::Text(text) => matches!(text.trim().to_lowercase().as_str(), "true" | "1" | "yes"),
+        Value::Nothing(()) => false,
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
@@ -75,6 +103,12 @@ pub struct Smtp {
 pub struct MailConfig {
     #[serde(default)]
     pub driver: Driver,
+    /// `queue` (default) or `now` (MAIL_DELIVERY).
+    #[serde(default)]
+    pub delivery: Delivery,
+    /// Run the queue worker inside the web server process (handy in development; production uses `mail:work`).
+    #[serde(default, deserialize_with = "bool_or_text")]
+    pub embedded_worker: bool,
     #[serde(default, deserialize_with = "null_as_empty")]
     pub from_address: String,
     #[serde(default, deserialize_with = "null_as_empty")]

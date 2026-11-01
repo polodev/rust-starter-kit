@@ -1,3 +1,4 @@
+use loco_database::{UnsignedBigInt, UnsignedInt, UnsignedTinyInt};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -6,14 +7,14 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "jobs")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: u64,
+    pub id: UnsignedBigInt,
     pub queue: String,
     #[sea_orm(column_type = "Text")]
     pub payload: String,
-    pub attempts: u8,
-    pub reserved_at: Option<u32>,
-    pub available_at: u32,
-    pub created_at: u32,
+    pub attempts: UnsignedTinyInt,
+    pub reserved_at: Option<UnsignedInt>,
+    pub available_at: UnsignedInt,
+    pub created_at: UnsignedInt,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

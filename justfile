@@ -6,7 +6,7 @@ css-watch:
     ./tools/tailwindcss -c tailwind.config.js -i assets/css/input.css -o assets/static/css/app.css --watch
 
 dev: css
-    cargo run -- start
+    cargo run -- start --server-and-worker
 
 migrate:
     cargo run -- db migrate

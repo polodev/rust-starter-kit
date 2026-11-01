@@ -23,7 +23,7 @@ async fn the_sql_console_reads_writes_and_can_roll_back() {
     let mut session = Session::new(false);
 
     session
-        .handle(&ctx, "insert into pages (slug, is_published, sort_order, created_at, updated_at) values ('tinker-demo', 1, 0, now(), now());", false)
+        .handle(&ctx, "insert into pages (slug, is_published, sort_order, created_at, updated_at) values ('tinker-demo', true, 0, now(), now());", false)
         .await
         .unwrap();
     assert_eq!(

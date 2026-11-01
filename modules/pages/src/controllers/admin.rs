@@ -151,7 +151,7 @@ async fn language_rows(ctx: &AppContext, page_id: i64) -> Result<Vec<Value>> {
 async fn feature_image_json(ctx: &AppContext, item: &pages::Model) -> Result<Option<Value>> {
     Ok(item.get_first_media(ctx, FEATURE_IMAGE).await?.map(|media| {
         json!({
-            "url": module_media::public_url(ctx, &media), "name": media.name, "kb": media.size.div_ceil(1024),
+            "url": module_media::public_url(ctx, &media), "name": media.name, "kb": loco_database::to_u32(media.size).div_ceil(1024),
             "alt": media.custom_property("alt").and_then(|alt| alt.as_str().map(str::to_owned)).unwrap_or_default(),
         })
     }))

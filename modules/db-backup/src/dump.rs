@@ -1,4 +1,5 @@
-//! Runs `mysqldump` and gzips its output into a local file.
+//! Runs `mysqldump` (MySQL, MariaDB) or `pg_dump` (PostgreSQL), chosen by the address, and gzips the output into a
+//! local file.
 
 use std::{
     fs::File,
@@ -10,9 +11,17 @@ use std::{
 use flate2::{write::GzEncoder, Compression};
 use loco_rs::{Error, Result};
 
-/// The parts of a `mysql://user:password@host:port/database?options` address.
+/// Which database server a backup is taken from (Spatie's `mysql` and `pgsql` dumpers).
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Kind {
+    Mysql,
+    Postgres,
+}
+
+/// The parts of a `mysql://user:password@host:port/database?options` or `postgres://...` address.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Connection {
+    pub kind: Kind,
     pub host: String,
     pub port: String,
     pub database: String,
@@ -40,28 +49,50 @@ fn percent_decode(text: &str) -> String {
 
 /// Reads the app's database address (the same one the app connects with).
 pub fn parse_database_uri(uri: &str) -> Result<Connection> {
-    let rest = uri
+    let (kind, rest) = if let Some(rest) = uri
         .strip_prefix("mysql://")
         .or_else(|| uri.strip_prefix("mariadb://"))
-        .ok_or_else(|| {
-            Error::string("backups support MySQL and MariaDB (mysql://) databases only")
-        })?;
+    {
+        (Kind::Mysql, rest)
+    } else if let Some(rest) = uri
+        .strip_prefix("postgres://")
+        .or_else(|| uri.strip_prefix("postgresql://"))
+    {
+        (Kind::Postgres, rest)
+    } else {
+        return Err(Error::string(
+            "backups support MySQL, MariaDB (mysql://) and PostgreSQL (postgres://) databases only",
+        ));
+    };
     let (credentials, location) = rest.rsplit_once('@').unwrap_or(("", rest));
     let (username, password) = credentials.split_once(':').unwrap_or((credentials, ""));
     let (host_port, database) = location.split_once('/').unwrap_or((location, ""));
     let database = database.split('?').next().unwrap_or_default();
-    let (host, port) = host_port.split_once(':').unwrap_or((host_port, "3306"));
+    let default_port = if kind == Kind::Postgres {
+        "5432"
+    } else {
+        "3306"
+    };
+    let (host, port) = host_port
+        .split_once(':')
+        .unwrap_or((host_port, default_port));
     if host.is_empty() || database.is_empty() {
         return Err(Error::string(
             "the database address needs a host and a database name",
         ));
     }
     Ok(Connection {
+        kind,
         host: host.to_string(),
         port: port.to_string(),
         database: percent_decode(database),
         username: if username.is_empty() {
-            "root".to_string()
+            if kind == Kind::Postgres {
+                "postgres"
+            } else {
+                "root"
+            }
+            .to_string()
         } else {
             percent_decode(username)
         },
@@ -93,11 +124,19 @@ pub fn flavour_from_version(version_output: &str) -> Flavour {
     }
 }
 
-/// The dump program to run: the configured path, else `mysqldump`, else `mariadb-dump`.
-pub fn dump_binary(configured: Option<&str>) -> Result<String> {
-    let candidates: Vec<&str> = match configured {
-        Some(path) if !path.trim().is_empty() => vec![path],
-        _ => vec!["mysqldump", "mariadb-dump"],
+/// The dump program to run: the configured path, else `mysqldump` then `mariadb-dump` (MySQL, MariaDB), or
+/// `pg_dump` (PostgreSQL; Homebrew keeps it outside the `PATH`, so its folders are tried too).
+pub fn dump_binary(kind: Kind, configured: Option<&str>) -> Result<String> {
+    let candidates: Vec<&str> = match (configured, kind) {
+        (Some(path), _) if !path.trim().is_empty() => vec![path],
+        (_, Kind::Mysql) => vec!["mysqldump", "mariadb-dump"],
+        (_, Kind::Postgres) => vec![
+            "pg_dump",
+            "/usr/local/opt/postgresql@17/bin/pg_dump",
+            "/usr/local/opt/postgresql@16/bin/pg_dump",
+            "/opt/homebrew/opt/postgresql@17/bin/pg_dump",
+            "/opt/homebrew/opt/postgresql@16/bin/pg_dump",
+        ],
     };
     for candidate in &candidates {
         if Command::new(candidate)
@@ -108,14 +147,37 @@ pub fn dump_binary(configured: Option<&str>) -> Result<String> {
             return Ok((*candidate).to_string());
         }
     }
+    let tools = match kind {
+        Kind::Mysql => "the MySQL or MariaDB client tools",
+        Kind::Postgres => "the PostgreSQL client tools (pg_dump)",
+    };
     Err(Error::string(&format!(
-        "could not run {}; install the MySQL or MariaDB client tools, or set settings.db_backup.dump_binary",
+        "could not run {}; install {tools}, or set settings.db_backup.dump_binary",
         candidates.join(" or ")
     )))
 }
 
 /// Arguments for the dump command (the password is passed in the environment, not here).
 pub fn dump_args(connection: &Connection, flavour: &Flavour, extra: &[String]) -> Vec<String> {
+    if connection.kind == Kind::Postgres {
+        // `--no-owner` lets the dump be restored by any user; the password goes in PGPASSWORD.
+        let mut args: Vec<String> = [
+            "--host",
+            &connection.host,
+            "--port",
+            &connection.port,
+            "--username",
+            &connection.username,
+            "--no-password",
+            "--no-owner",
+        ]
+        .iter()
+        .map(|arg| (*arg).to_string())
+        .collect();
+        args.extend(extra.iter().cloned());
+        args.push(connection.database.clone());
+        return args;
+    }
     let mut args: Vec<String> = [
         "--host",
         &connection.host,
@@ -158,7 +220,14 @@ pub fn dump_to_gzip(
 
     let mut child = Command::new(binary)
         .args(&args)
-        .env("MYSQL_PWD", &connection.password)
+        .env(
+            if connection.kind == Kind::Postgres {
+                "PGPASSWORD"
+            } else {
+                "MYSQL_PWD"
+            },
+            &connection.password,
+        )
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -235,7 +304,13 @@ mod tests {
         );
         let plain = parse_database_uri("mysql://root@127.0.0.1/rust_starter").unwrap();
         assert_eq!((plain.port.as_str(), plain.password.as_str()), ("3306", ""));
-        for bad in ["postgres://u@h/d", "mysql://root@host", "mysql:///db", ""] {
+        for bad in [
+            "sqlite://x.db",
+            "mysql://root@host",
+            "mysql:///db",
+            "postgres://u@h",
+            "",
+        ] {
             assert!(parse_database_uri(bad).is_err(), "{bad}");
         }
     }
@@ -277,5 +352,47 @@ mod tests {
         );
         assert!(!dump_args(&connection, &Flavour::Other, &[])
             .contains(&"--column-statistics=0".to_string()));
+    }
+
+    #[test]
+    fn a_postgres_address_is_understood_and_gets_pg_dump_arguments() {
+        let pg = parse_database_uri("postgres://app:p%40ss@db.internal/shop").unwrap();
+        assert_eq!(
+            (
+                pg.kind,
+                pg.port.as_str(),
+                pg.username.as_str(),
+                pg.password.as_str()
+            ),
+            (Kind::Postgres, "5432", "app", "p@ss")
+        );
+        assert_eq!(
+            parse_database_uri("postgresql://h:6543/d")
+                .unwrap()
+                .username,
+            "postgres"
+        );
+        assert_eq!(parse_database_uri("mysql://h/d").unwrap().kind, Kind::Mysql);
+
+        let args = dump_args(&pg, &Flavour::Other, &["--schema=public".to_string()]);
+        assert!(
+            !args.iter().any(|arg| arg.contains("p@ss")),
+            "no password in arguments"
+        );
+        assert!(
+            args.contains(&"--no-owner".to_string()) && args.contains(&"--no-password".to_string())
+        );
+        assert!(
+            !args
+                .iter()
+                .any(|arg| arg.contains("single-transaction") || arg.contains("utf8mb4")),
+            "no MySQL options"
+        );
+        assert_eq!(args.last().map(String::as_str), Some("shop"));
+        assert_eq!(
+            args[args.len() - 2],
+            "--schema=public",
+            "extra arguments before the name"
+        );
     }
 }

@@ -1,6 +1,7 @@
 /// Spatie's `activity_log` table, column for column. The id columns of the subject and the causer are
 /// text, so models with numeric and uuid keys can both be recorded.
 pub mod activity_log {
+    use loco_database::UnsignedBigInt;
     use sea_orm::entity::prelude::*;
     use serde::{Deserialize, Serialize};
 
@@ -8,7 +9,7 @@ pub mod activity_log {
     #[sea_orm(table_name = "activity_log")]
     pub struct Model {
         #[sea_orm(primary_key)]
-        pub id: u64,
+        pub id: UnsignedBigInt,
         pub log_name: Option<String>,
         #[sea_orm(column_type = "Text")]
         pub description: String,

@@ -45,6 +45,7 @@ pub async fn load_session(
                         id: user.id,
                         session_id: live.id,
                         name: user.name,
+                        email_verified: user.email_verified_at.is_some(),
                         email: user.email,
                         created_at: user.created_at,
                         access,

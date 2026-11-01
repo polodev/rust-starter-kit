@@ -11,6 +11,11 @@ use sea_orm::{
 };
 
 const MAX_ROWS_SHOWN: usize = 200;
+
+/// The dot commands differ between MySQL/MariaDB and PostgreSQL.
+fn postgres(ctx: &AppContext) -> bool {
+    ctx.db.get_database_backend() == sea_orm::DatabaseBackend::Postgres
+}
 const MAX_CELL_WIDTH: usize = 60;
 
 const HELP: &str = "\
@@ -238,15 +243,33 @@ impl Session {
         match name {
             "help" | "h" | "?" => Ok(Reply::Message(HELP.to_string())),
             "exit" | "quit" | "q" => Ok(Reply::Exit),
-            "tables" => table(&self.query(ctx, "SHOW TABLES").await?),
-            "desc" | "describe" if valid_table_name(argument) => {
-                table(&self.query(ctx, &format!("DESCRIBE `{argument}`")).await?)
+            "tables" => {
+                let sql = if postgres(ctx) {
+                    "SELECT tablename AS table_name FROM pg_tables WHERE schemaname = current_schema() ORDER BY tablename"
+                } else {
+                    "SHOW TABLES"
+                };
+                table(&self.query(ctx, sql).await?)
             }
-            "count" if valid_table_name(argument) => table(
-                &self
-                    .query(ctx, &format!("SELECT COUNT(*) AS total FROM `{argument}`"))
-                    .await?,
-            ),
+            "desc" | "describe" if valid_table_name(argument) => {
+                let sql = if postgres(ctx) {
+                    format!("SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = '{argument}' ORDER BY ordinal_position")
+                } else {
+                    format!("DESCRIBE `{argument}`")
+                };
+                table(&self.query(ctx, &sql).await?)
+            }
+            "count" if valid_table_name(argument) => {
+                let quote = if postgres(ctx) { '"' } else { '`' };
+                table(
+                    &self
+                        .query(
+                            ctx,
+                            &format!("SELECT COUNT(*) AS total FROM {quote}{argument}{quote}"),
+                        )
+                        .await?,
+                )
+            }
             "desc" | "describe" | "count" => {
                 Err(Error::string("give a table name, e.g. .desc users"))
             }

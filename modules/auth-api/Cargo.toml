@@ -5,6 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
+loco-database = { workspace = true }
 loco-modular = { workspace = true }
 loco-rs = { workspace = true }
 sea-orm = { workspace = true }

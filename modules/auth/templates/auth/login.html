@@ -22,6 +22,10 @@
       </label>
     <button type="submit" class="w-full rounded-md bg-brand-amber px-4 py-2 font-medium text-white hover:bg-amber-600">{{ t(key="login-submit", lang=tag) }}</button>
   </form>
+  <p class="mt-4 flex flex-wrap justify-between gap-2 text-sm">
+    <a href="/forgot-password" data-testid="forgot-password-link" class="font-medium text-brand-navy hover:underline dark:text-brand-amber">{{ t(key="login-forgot-password", lang=tag) }}</a>
+    <a href="/login/email-link" data-testid="sign-in-link-link" class="font-medium text-brand-navy hover:underline dark:text-brand-amber">{{ t(key="login-email-link", lang=tag) }}</a>
+  </p>
 
   {% if google_login %}
   <div class="mt-6 flex items-center gap-3 text-xs uppercase text-slate-400"><span class="h-px flex-1 bg-slate-200 dark:bg-gray-700"></span>{{ t(key="login-or", lang=tag) }}<span class="h-px flex-1 bg-slate-200 dark:bg-gray-700"></span></div>

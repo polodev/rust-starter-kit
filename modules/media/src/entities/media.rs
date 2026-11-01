@@ -1,3 +1,4 @@
+use loco_database::{UnsignedBigInt, UnsignedInt};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "media")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: u64,
+    pub id: UnsignedBigInt,
     /// A Laravel morph alias (`enrollment`) or class name (`Modules\Foo\Models\Foo`), or this
     /// app's own name for the model (`user`, `page`).
     pub model_type: String,
@@ -21,7 +22,7 @@ pub struct Model {
     pub mime_type: Option<String>,
     pub disk: String,
     pub conversions_disk: Option<String>,
-    pub size: u32,
+    pub size: UnsignedInt,
     /// JSON text.
     #[sea_orm(column_type = "Text")]
     pub manipulations: String,
@@ -34,7 +35,7 @@ pub struct Model {
     /// JSON text.
     #[sea_orm(column_type = "Text")]
     pub responsive_images: String,
-    pub order_column: Option<u32>,
+    pub order_column: Option<UnsignedInt>,
     pub created_at: Option<DateTimeWithTimeZone>,
     pub updated_at: Option<DateTimeWithTimeZone>,
 }

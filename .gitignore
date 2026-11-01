@@ -1,5 +1,6 @@
 # build output and tools
 /target
+/target-pg
 /tools
 
 # secrets and local state: never commit these

@@ -86,7 +86,7 @@ pub async fn read_upload(mut multipart: Multipart, field_name: &str) -> Option<U
 async fn serve(
     State(ctx): State<AppContext>,
     OptionalAuth(user): OptionalAuth,
-    Path((id, file_name)): Path<(u64, String)>,
+    Path((id, file_name)): Path<(loco_database::UnsignedBigInt, String)>,
 ) -> Result<Response> {
     let Some(item) = media::Entity::find_by_id(id).one(&ctx.db).await? else {
         return Err(Error::NotFound);
@@ -188,7 +188,10 @@ async fn library(
 
     let mut select = media::Entity::find();
     if !search.is_empty() {
-        select = select.filter(media::Column::Name.contains(search.as_str()));
+        select = select.filter(loco_database::contains_ignoring_case(
+            media::Column::Name,
+            search.as_str(),
+        ));
     }
     if !collection.is_empty() {
         select = select.filter(media::Column::CollectionName.eq(collection.as_str()));
@@ -225,7 +228,7 @@ async fn library(
             let mime = item.mime_type.clone().unwrap_or_default();
             let is_library = item.model_type == LIBRARY_OWNER_TYPE;
             json!({
-                "name": item.name, "file_name": item.file_name, "owner_type": if is_library { "loose file, no record".to_string() } else { item.model_type.clone() }, "url": crate::service::public_url(&ctx, item), "mime": mime, "kb": u64::from(item.size).div_ceil(1024),
+                "name": item.name, "file_name": item.file_name, "owner_type": if is_library { "loose file, no record".to_string() } else { item.model_type.clone() }, "url": crate::service::public_url(&ctx, item), "mime": mime, "kb": loco_database::to_u64(item.size.into()).div_ceil(1024),
                 "is_image": mime.starts_with("image/"), "collection": item.collection_name,
                 "public": item.is_public(), "added": item.created_at.map(|at| at.format("%Y-%m-%d").to_string()).unwrap_or_default(),
                 "is_library": is_library, "id": item.id,
@@ -343,7 +346,7 @@ async fn delete(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
     page: AdminPage,
-    Path(id): Path<u64>,
+    Path(id): Path<loco_database::UnsignedBigInt>,
 ) -> Result<Response> {
     if !page.can("media.manage") {
         return page.forbidden(&v);

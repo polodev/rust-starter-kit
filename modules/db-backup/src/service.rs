@@ -44,7 +44,7 @@ pub async fn run(
         }
     }
     let disks = chosen_disks(config, only_disk)?;
-    let binary = dump::dump_binary(config.dump_binary.as_deref())?;
+    let binary = dump::dump_binary(connection.kind, config.dump_binary.as_deref())?;
 
     let work = tempfile_path(now);
     let (binary_for_dump, connection_for_dump, extra, target) = (

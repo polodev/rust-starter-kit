@@ -6,7 +6,7 @@ use loco_rs::{
 };
 use serde_json::json;
 
-use crate::{config::MailConfig, message::Mail, service};
+use crate::{config::MailConfig, message::Mail, queue, service};
 
 // mods-inject (do not remove)
 
@@ -132,5 +132,30 @@ pub fn register(tasks: &mut Tasks) {
     tasks.register(SendTest);
     tasks.register(SendInvoice);
     tasks.register(SesSmtpPassword);
+    tasks.register(Work);
     // tasks-inject (do not remove)
+}
+
+/// `mail:work`: sends the emails waiting in the database queue (`mail_queue`), forever, until stopped.
+pub struct Work;
+
+#[async_trait]
+impl Task for Work {
+    fn task(&self) -> TaskInfo {
+        TaskInfo {
+            name: "mail:work".to_string(),
+            detail: "Send queued emails and retry failed ones. Runs until stopped (use Supervisor in production).\nUsage: cargo run -- task mail:work   (add once:true to handle what is due and exit)".to_string(),
+        }
+    }
+
+    async fn run(&self, ctx: &AppContext, vars: &Vars) -> Result<()> {
+        if vars.cli_arg("once").is_ok_and(|value| value == "true") {
+            let config = MailConfig::load(ctx)?;
+            let handled = queue::work_once(&ctx.db, &config).await?;
+            println!("handled {handled} queued email(s)");
+            return Ok(());
+        }
+        println!("mail worker running; stop it with Ctrl+C");
+        queue::run_worker(ctx).await
+    }
 }

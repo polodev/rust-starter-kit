@@ -65,6 +65,9 @@ impl Hooks for App {
     }
 
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        // The build (MySQL/MariaDB by default, PostgreSQL with `--features postgres`) must match DATABASE_URL.
+        loco_database::check_backend(ctx.db.get_database_backend())
+            .map_err(|message| loco_rs::Error::string(&message))?;
         // Uploaded files: the local folder (storage/uploads) or the R2 public bucket (MEDIA_STORAGE=r2 in .env).
         // Tests keep them in memory.
         let driver = if ctx.environment == Environment::Test {
@@ -103,7 +106,12 @@ impl Hooks for App {
         tasks.register(tasks::tinker::Tinker);
         tasks.register(tasks::user_create::UserCreate);
         tasks.register(tasks::user_delete::UserDelete);
-        loco_modular::register_tasks(&modules_registry::all(), tasks);
+        let modules = modules_registry::all();
+        loco_modular::register_tasks(&modules, tasks);
+        // `jobs:work` runs the database jobs that the modules declare.
+        tasks.register(module_queue_watcher::JobsWork::new(
+            loco_modular::collect_database_jobs(&modules),
+        ));
     }
 
     async fn truncate(ctx: &AppContext) -> Result<()> {
